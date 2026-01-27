@@ -385,8 +385,14 @@ $('regClearBtn').onclick = clearRegisterInputs;
     console.error(err);
   }
 })();
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("loginBtn");
+    if (!btn) { alert("❌ ΔΕΝ βρέθηκε loginBtn"); return; }
+    btn.addEventListener("click", () => alert("✅ ΤΟ LOGIN ΔΟΥΛΕΥΕΙ"));
+  });
 </script>
-
+  
   </body>
 
 </html>
