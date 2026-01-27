@@ -106,7 +106,8 @@
       <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
 
       <div class="row">
-        <button class="btn g" id="btnLogin" type="button">Login</button>
+        <button id="loginBtn" type="button">Login</button>
+
         <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
       </div>
 
@@ -357,142 +358,35 @@ $('regClearBtn').onclick = clearRegisterInputs;
   // ✅ δείξε "επόμενος διαγωνισμός"
   renderNextContest();
 })();
-<script type="module">
-  import { auth, db } from "./firebase.js";
-  import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+<script>
+(async () => {
+  alert("SCRIPT LOADED (NON-MODULE)");
 
-  import {
-    doc,
-    setDoc,
-    getDoc,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  try {
+    const { auth, db } = await import("./firebase.js");
 
-  // 🔧 Βάλε εδώ τα TEST admin credentials (ό,τι είχες βάλει για test)
-  const ADMIN_USERNAME = "marios";      // άλλαξέ το αν θες
-  const ADMIN_PASSWORD = "1234";        // άλλαξέ το αν θες
+    const { createUserWithEmailAndPassword, signInWithEmailAndPassword } =
+      await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
-  // Μετατρέπουμε username -> email (για Firebase Auth)
-  // π.χ. marios -> marios@cmp.local
-  function usernameToEmail(username) {
-    return `${String(username).trim().toLowerCase()}@cmp.local`;
+    const { doc, setDoc, getDoc, serverTimestamp } =
+      await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+
+    alert("IMPORTS OK ✅");
+
+    // ✅ Πιάσε το κουμπί σωστά
+    const btnLogin = document.getElementById("loginBtn");
+    btnLogin.addEventListener("click", async (e) => {
+      e.preventDefault();
+      alert("CLICK OK ✅");
+    });
+
+  } catch (err) {
+    alert("IMPORT FAILED ❌ (δες Console)");
+    console.error(err);
   }
-
-  // Βρες inputs/buttons (προσπαθεί σε πολλά πιθανά ids)
-  const elUser =
-    document.getElementById("username") ||
-    document.getElementById("loginUsername") ||
-    document.querySelector('input[name="username"]') ||
-    document.querySelector('input[type="text"]');
-
-  const elPass =
-    document.getElementById("password") ||
-    document.getElementById("loginPass") ||
-    document.querySelector('input[name="password"]') ||
-    document.querySelector('input[type="password"]');
-
-  const btnLogin =
-    document.getElementById("btnLogin") ||
-    document.getElementById("loginBtn") ||
-    document.querySelector('[data-action="login"]') ||
-    document.querySelector('button[type="submit"]');
-
-  const btnRegister =
-    document.getElementById("btnRegister") ||
-    document.getElementById("registerBtn") ||
-    document.querySelector('[data-action="register"]');
-
-  function requireFields() {
-    if (!elUser || !elPass || !btnLogin) {
-      alert("Λείπουν ids στα πεδία. Βάλε id='username' και id='password' και id='btnLogin' στο κουμπί login.");
-      throw new Error("Missing login form elements");
-    }
-  }
-
-  // ✅ LOGIN
-  btnLogin?.addEventListener("click", async (e) => {
-    e.preventDefault();
-    alert("CLICK OK");
-console.log("CLICK OK");
-
-    requireFields();
-    alert("LOGIN CLICK OK");
-
-
-    const username = elUser.value.trim();
-    const password = elPass.value;
-
-    // Admin test login (όπως είπες ότι είχατε για test)
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      window.location.href = "./admin.html";
-      return;
-    }
-
-    // Customer login via Firebase
-    const email = usernameToEmail(username);
-
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-
-      // Optional: έλεγχος role από Firestore (αν υπάρχει)
-      const snap = await getDoc(doc(db, "users", cred.user.uid));
-      const role = snap.exists() ? snap.data().role : "user";
-
-      window.location.href = (role === "admin") ? "./admin.html" : "./dashboard.html";
-    } catch (err) {
-      alert("Λάθος στοιχεία ή δεν υπάρχει user. Αν δεν έχεις κάνει εγγραφή, πάτα Register.");
-      console.error(err);
-    }
-  });
-
-  // ✅ REGISTER (αν έχεις κουμπί register)
-  btnRegister?.addEventListener("click", async (e) => {
-    e.preventDefault();
-    if (!elUser || !elPass) {
-      alert("Βάλε id='username' και id='password' στα πεδία.");
-      return;
-    }
-
-    const username = elUser.value.trim();
-    const password = elPass.value;
-
-    if (!username || !password) {
-      alert("Συμπλήρωσε username και password.");
-      return;
-    }
-
-    // Block αν κάποιος πάει να κάνει register ως admin test
-    if (username === ADMIN_USERNAME) {
-      alert("Αυτό το username είναι δεσμευμένο.");
-      return;
-    }
-
-    const email = usernameToEmail(username);
-
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-
-      // Save profile in Firestore
-      await setDoc(doc(db, "users", cred.user.uid), {
-        username,
-        email,
-        role: "user",
-        createdAt: serverTimestamp()
-      });
-
-      alert("Εγγραφή επιτυχής ✅");
-      window.location.href = "./dashboard.html";
-    } catch (err) {
-      alert("Αποτυχία εγγραφής. Μήπως υπάρχει ήδη αυτό το username;");
-      console.error(err);
-    }
-  });
+})();
 </script>
 
-    
-</body>
+  </body>
 
 </html>
