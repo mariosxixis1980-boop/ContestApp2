@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cyprus Match Predict</title>
+  <style>
+    :root{
+      --bg:#070b13;--b:rgba(255,255,255,.12);
+      --t:#eaf1ff;--m:rgba(255,255,255,.65);
+      --g:rgba(46,204,113,.20);--gb:rgba(46,204,113,.45);
+      --a:rgba(241,196,15,.16);--ab:rgba(241,196,15,.45);
+      --r:rgba(231,76,60,.14);--rb:rgba(231,76,60,.45);
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{
+      margin:0;min-height:100vh;padding:18px;color:var(--t);
+      background:
+        radial-gradient(900px 700px at 20% 0%, rgba(40,110,255,.25), transparent 55%),
+        radial-gradient(900px 700px at 80% 10%, rgba(0,255,170,.18), transparent 55%),
+        var(--bg);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .card{
+      width:min(520px, 100%);
+      border:1px solid var(--b);
+      border-radius:22px;
+      padding:16px;
+      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      box-shadow:0 18px 60px rgba(0,0,0,.55);
+    }
+    h1{margin:0;font-size:36px}
+    .sub{margin-top:6px;color:var(--m);font-weight:700}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+    .pill{
+      padding:8px 12px;border:1px solid var(--b);border-radius:999px;
+      background:rgba(0,0,0,.25);font-weight:800
+    }
+    .btn{
+      border:1px solid var(--b);background:rgba(255,255,255,.06);color:var(--t);
+      padding:10px 12px;border-radius:14px;font-weight:900;cursor:pointer;
+      text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .g{background:var(--g);border-color:var(--gb)}
+    .a{background:var(--a);border-color:var(--ab)}
+    .r{background:var(--r);border-color:var(--rb)}
+    .box{
+      border:1px solid var(--b);border-radius:18px;background:rgba(0,0,0,.18);
+      padding:12px;margin-top:12px;
+    }
+    label{display:block;margin-top:10px;color:var(--m);font-weight:800}
+    input{
+      width:100%;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--b);
+      background:rgba(0,0,0,.25);
+      color:var(--t);
+      outline:none;
+      font-weight:800;
+    }
+    .mini{color:var(--m);font-weight:750;margin-top:8px}
+    .tabs{display:flex;gap:10px;margin-top:12px}
+    .tab{flex:1}
+    .hide{display:none}
+    #toast{
+      display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+      z-index:9999;
+    }
+  </style>
+  </head>
+  
+  <body>
+    <div class="card">
+<div style="text-align:center;margin-bottom:12px;">
+    <div style="font-size:18px;font-weight:700;">
+        Cyprus Match Predict
+    </div>
+    <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">
+     🇨🇾  C.M.P 🇨🇾
+    </div>
+</div>
+    
+    <h1>🔐 Login</h1>
+    <div class="sub">Βάλε username & password. Email (προαιρετικό) μόνο στην εγγραφή.</div>
+    
+    <!-- ✅ ΝΕΟ: Next contest preview -->
+    <div class="box" id="nextBox">
+      <div class="mini" style="font-size:16px;font-weight:900">
+        📅 <span id="nextText">Επόμενος διαγωνισμός: -</span>
+      </div>
+      <div class="mini" id="nextSub" style="margin-top:6px;opacity:.95">-</div>
+    </div>
+
+    <div class="tabs">
+      <button class="btn a tab" id="tabLogin" type="button">Είσοδος</button>
+      <button class="btn tab" id="tabRegister" type="button">Εγγραφή</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="box" id="loginBox">
+      <label>Username</label>
+      <input id="loginUser" autocomplete="username" placeholder="π.χ marios"/>
+
+      <label>Password</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
+
+      <div class="row">
+        <button class="btn g" id="loginBtn" type="button">✅ Login</button>
+        <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
+      </div>
+
+      <div class="mini">Tip: Αν βλέπεις “κωδικό μόνος του”, είναι autofill του Chrome.</div>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="box hide" id="registerBox">
+      <label>Username</label>
+      <input id="regUser" autocomplete="username" placeholder="διάλεξε username"/>
+
+      <label>Password</label>
+      <input id="regPass" type="password" autocomplete="new-password" placeholder="διάλεξε password"/>
+
+      <label>Email (προαιρετικό)</label>
+      <input id="regEmail" type="email" autocomplete="email" placeholder="π.χ name@gmail.com (προαιρετικό)"/>
+
+      <div class="row">
+        <button class="btn g" id="regBtn" type="button">🆕 Δημιμιουργία</button>
+        <button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
+      </div>
+
+      <div class="mini">Αν αφήσεις το email κενό, η εγγραφή γίνεται κανονικά.</div>
+    </div>
+
+    <!-- ✅ ΕΞΤΡΑ (σωστή θέση: μέσα στο .card αλλά έξω από loginBox/registerBox) -->
+    <p style="font-size:11px;text-align:center;color:rgba(255,255,255,.55);margin-top:12px;">
+      Η εφαρμογή δεν αποτελεί παιχνίδι στοιχήματος.
+    </p>
+
+    <p style="font-size:12px;text-align:center;margin-top:6px;color:rgba(255,255,255,.75);font-weight:700;">
+      Με τη σύνδεση αποδέχεστε τους
+      <a href="terms.html" target="_blank" style="color:#eaf1ff;text-decoration:underline;">Όρους &amp; Προϋποθέσεις</a>
+      και τους
+      <a href="rules.html" target="_blank" style="color:#eaf1ff;text-decoration:underline;">Κανόνες Παιχνιδιού</a>.
+    </p>
+
+    <div id="toast" class="pill"></div>
+  </div>
+
+<script>
+/* =========================
+   STORAGE KEYS
+========================= */
+const KEY_SESSION = 'session';
+const KEY_USERS   = 'users';
+const KEY_NEXT    = 'nextContestStartISO'; // ✅ από admin
+
+/* =========================
+   HELPERS
+========================= */
+const $ = id => document.getElementById(id);
+const R = (k,f)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(f)); } catch { return f; } };
+const W = (k,v)=>localStorage.setItem(k, JSON.stringify(v));
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(window.__tt);
+  window.__tt = setTimeout(()=> t.style.display='none', 2400);
+}
+
+function norm(s){ return String(s||'').trim(); }
+function normUser(u){ return norm(u).toLowerCase(); }
+
+function isValidEmail(email){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/* =========================
+   NEXT CONTEST (PRE-LOGIN UI)
+========================= */
+function fmtDateGreek(isoDate){
+  // isoDate: "YYYY-MM-DD"
+  const s = String(isoDate||'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [yy,mm,dd] = s.split('-');
+  return `${dd}/${mm}/${yy}`;
+}
+function renderNextContest(){
+  const iso = String(R(KEY_NEXT,'') || '').trim();
+  const pretty = fmtDateGreek(iso);
+
+  if(pretty){
+    $('nextText').textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
+    $('nextSub').textContent = 'Μέχρι τότε μπορείς να κάνεις login κανονικά.';
+  }else{
+    $('nextText').textContent = 'Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα';
+    $('nextSub').textContent = 'Ο admin θα βάλει ημερομηνία από το Admin Panel.';
+  }
+}
+
+/* =========================
+   USERS
+========================= */
+function usersAll(){
+  const u = R(KEY_USERS, []);
+  return Array.isArray(u) ? u : [];
+}
+function saveUsers(arr){
+  W(KEY_USERS, Array.isArray(arr)?arr:[]);
+}
+function findUser(username){
+  const u = normUser(username);
+  return usersAll().find(x => normUser(x.username) === u) || null;
+}
+function upsertUser(user){
+  const arr = usersAll();
+  const u = normUser(user.username);
+  const i = arr.findIndex(x => normUser(x.username) === u);
+  if(i >= 0) arr[i] = user;
+  else arr.push(user);
+  saveUsers(arr);
+}
+
+/* =========================
+   ADMIN RULE
+========================= */
+function isAdminCredentials(username, password){
+  const U = 'marios';
+  const P = '1234';
+  return normUser(username) === U && String(password||'') === P;
+}
+
+/* =========================
+   SESSION
+========================= */
+function setSession(s){
+  W(KEY_SESSION, s);
+}
+function clearSession(){
+  localStorage.removeItem(KEY_SESSION);
+}
+
+/* =========================
+   UI TABS
+========================= */
+function showLogin(){
+  $('loginBox').classList.remove('hide');
+  $('registerBox').classList.add('hide');
+  $('tabLogin').className = 'btn a tab';
+  $('tabRegister').className = 'btn tab';
+}
+function showRegister(){
+  $('registerBox').classList.remove('hide');
+  $('loginBox').classList.add('hide');
+  $('tabRegister').className = 'btn a tab';
+  $('tabLogin').className = 'btn tab';
+}
+
+/* =========================
+   ACTIONS
+========================= */
+function doLogin(){
+  const username = norm($('loginUser').value);
+  const password = String($('loginPass').value || '');
+
+  if(!username || !password) return toast('Συμπλήρωσε username & password');
+
+  // built-in admin
+  if(isAdminCredentials(username, password)){
+    setSession({ username: normUser(username), isAdmin: true });
+    toast('✅ Admin login');
+    return setTimeout(()=> location.href='admin.html', 200);
+  }
+
+  // normal user
+  const u = findUser(username);
+  if(!u) return toast('⛔ Δεν υπάρχει αυτός ο χρήστης');
+  if(String(u.password) !== password) return toast('⛔ Λάθος στοιχεία');
+
+  setSession({ username: u.username, isAdmin: !!u.isAdmin });
+  toast('✅ Login');
+  setTimeout(()=> location.href='dashboard.html', 200);
+}
+
+function doRegister(){
+  const username = norm($('regUser').value);
+  const password = String($('regPass').value || '');
+  const emailRaw = norm($('regEmail').value).toLowerCase();
+
+  if(!username || !password) return toast('Συμπλήρωσε username & password');
+
+  if(findUser(username)) return toast('⛔ Το username υπάρχει ήδη');
+
+  if(emailRaw !== '' && !isValidEmail(emailRaw)){
+    return toast('Βάλε σωστό email (ή άφησέ το κενό)');
+  }
+
+  if(normUser(username) === 'marios'){
+    return toast('⛔ Αυτό το username είναι reserved');
+  }
+
+  const user = {
+    username: username,
+    password: password,
+    email: emailRaw || null,
+    isAdmin: false,
+    createdAt: Date.now()
+  };
+
+  upsertUser(user);
+  toast('✅ Έγινε εγγραφή — κάνε Login');
+  showLogin();
+  $('loginUser').value = user.username;
+  $('loginPass').value = '';
+}
+
+function clearLoginInputs(){
+  $('loginUser').value = '';
+  $('loginPass').value = '';
+  toast('🧽 Καθαρίστηκε');
+}
+function clearRegisterInputs(){
+  $('regUser').value = '';
+  $('regPass').value = '';
+  $('regEmail').value = '';
+  toast('🧽 Καθαρίστηκε');
+}
+
+/* =========================
+   EVENTS
+========================= */
+$('tabLogin').onclick = showLogin;
+$('tabRegister').onclick = showRegister;
+
+$('loginBtn').onclick = doLogin;
+$('clearBtn').onclick = clearLoginInputs;
+
+$('regBtn').onclick = doRegister;
+$('regClearBtn').onclick = clearRegisterInputs;
+
+/* =========================
+   ON LOAD
+========================= */
+(function init(){
+  // ⚠️ Αν δεν θες να κάνει logout κάθε φορά, σχολίασε την επόμενη γραμμή:
+  clearSession();
+
+  $('loginUser').value = '';
+  $('loginPass').value = '';
+  $('regUser').value = '';
+  $('regPass').value = '';
+  $('regEmail').value = '';
+  showLogin();
+
+  // ✅ δείξε "επόμενος διαγωνισμός"
+  renderNextContest();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard</title>
+
+<style>
+:root{
+  --bg:#070b13;--b:rgba(255,255,255,.12);
+  --t:#eaf1ff;--m:rgba(255,255,255,.65);
+  --g:rgba(46,204,113,.20);
+  --a:rgba(241,196,15,.16);
+  --r:rgba(231,76,60,.14);
+  --bl:rgba(52,152,219,.18);
+}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+body{
+  margin:0;min-height:100vh;padding:14px;color:var(--t);
+  background:
+  radial-gradient(900px 700px at 20% 0%,rgba(40,110,255,.25),transparent 55%),
+  radial-gradient(900px 700px at 80% 10%,rgba(0,255,170,.18),transparent 55%),
+  var(--bg)
+}
+.card{max-width:1100px;margin:0 auto;border:1px solid var(--b);
+border-radius:18px;padding:14px;
+background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.04))}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.pill{padding:8px 12px;border:1px solid var(--b);border-radius:999px;
+background:rgba(0,0,0,.25);font-weight:800}
+.btn{border:1px solid var(--b);background:rgba(255,255,255,.06);
+color:var(--t);padding:10px 12px;border-radius:14px;
+font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.g{background:var(--g)} .a{background:var(--a)}
+.r{background:var(--r)} .bl{background:var(--bl)}
+.box{border:1px solid var(--b);border-radius:16px;
+background:rgba(0,0,0,.18);padding:12px;margin-top:12px}
+.match{border:1px solid var(--b);border-radius:14px;padding:12px;margin-top:10px}
+.off{opacity:.7;background:rgba(0,0,0,.4)}
+.lockedPick{border-color:rgba(231,76,60,.55)!important;background:rgba(231,76,60,.12)!important}
+.mini{color:var(--m);font-weight:750}
+select{padding:8px;border-radius:10px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.18)}
+h1{margin:0}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <h1>📊 Dashboard</h1>
+
+  <div class="row">
+    <a class="btn" href="leaderboard.html">🏆 Leaderboard</a>
+    <button class="btn r" id="lo" type="button">Logout</button>
+    <div class="pill" id="userPill">Χρήστης:-</div>
+    <div class="pill" id="contestInfo">Contest:-</div>
+    <div class="pill" id="roundInfo">Αγωνιστική:-</div>
+  </div>
+
+  <div class="box">
+    <div class="mini" style="font-size:18px;font-weight:900;color:gold">
+      🎁 <span id="prizeText">-</span>
+    </div>
+  </div>
+
+  <!-- ✅ ΜΗΝΥΜΑ: νέος χρήστης ενώ ξεκίνησε ο διαγωνισμός -->
+  <div class="box" id="blockedBox"
+       style="display:none;border-color:rgba(231,76,60,.45);background:rgba(231,76,60,.14)">
+    <div class="pill">⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει</div>
+    <div class="mini" style="margin-top:8px">
+      Δεν μπορείς να συμμετέχεις γιατί ο διαγωνισμός ξεκίνησε πριν μπεις.
+      Θα μπορείς να παίξεις στον επόμενο διαγωνισμό.
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="row" style="margin-top:0">
+      <button class="btn r" id="lockBtn" type="button">🔒 Κλείδωμα προβλέψεων</button>
+      <div class="pill" id="lockState">Κατάσταση: -</div>
+      <div class="pill" id="dlPill">Deadline:-</div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="btn bl" id="buyBtn" type="button">💶 Αγορά HELP €1,99</button>
+      <div class="pill" id="helpPill">HELP: -</div>
+    </div>
+
+    <div class="mini" style="margin-top:8px">
+      Αν <b>δεν κλειδώσεις</b> μέχρι 10’ πριν τον 1ο αγώνα, τα παιχνίδια σου γίνονται <b>OFF</b> (σαν να μην έπαιξες).
+    </div>
+
+    <div class="mini" style="margin-top:8px;opacity:.9">
+      Tip (Acode): Αν το <b>pay.html</b> δεν ανοίγει από το κουμπί, άνοιξέ το 1 φορά με <b>Play</b> ή τρέξε server για όλο το folder.
+    </div>
+  </div>
+
+  <div id="matches"></div>
+</div>
+
+<div id="toast" class="pill" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999"></div>
+
+<script>
+const K={
+  S:'session',A:'activeContest',M:'contestMatches',
+  P:'picks',H:'help199',META:'contestMeta',
+  WARN:'helpWarn',LOCK:'picksLocked'
+};
+const $=i=>document.getElementById(i);
+const R=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
+const W=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const now=()=>Date.now();
+const T=m=>{const x=$('toast');x.textContent=m;x.style.display='block';clearTimeout(window.__t);window.__t=setTimeout(()=>x.style.display='none',2300)};
+const sess=()=>R(K.S,null);
+
+$('lo').onclick=()=>{ localStorage.removeItem(K.S); location.href='login.html'; };
+
+/* deadline = 10 λεπτά πριν τον πρώτο ON αγώνα */
+function deadlineMsFromMatches(arr){
+  const times=(arr||[])
+    .filter(m=>m && m.off!==true)
+    .map(m=>new Date(m.startISO).getTime())
+    .filter(Number.isFinite);
+  if(!times.length) return null;
+  return Math.min(...times)-10*60*1000;
+}
+function fmt(ms){
+  const d=new Date(ms);
+  const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0');
+  const yy=d.getFullYear(),hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+}
+
+/* LOCK MAP */
+function lockAll(){ return R(K.LOCK,{}); }
+function isLocked(cid,u){ return !!(lockAll()?.[cid]?.[u]); }
+function setLocked(cid,u,val){
+  const all=lockAll();
+  all[cid]=all[cid]||{};
+  all[cid][u]=!!val;
+  W(K.LOCK,all);
+}
+
+/* HELP */
+function helpAll(){ return R(K.H,{}); }
+function getHelpRec(cid,u){ return helpAll()?.[cid]?.[u]||null; }
+function ensureHelpRec(cid,u){
+  const all=helpAll();
+  all[cid]=all[cid]||{};
+  all[cid][u]=all[cid][u]||{paidAt:null,remaining:0,usedMatchIds:[]};
+  all[cid][u].remaining = Number(all[cid][u].remaining||0);
+  all[cid][u].usedMatchIds = Array.isArray(all[cid][u].usedMatchIds)?all[cid][u].usedMatchIds:[];
+  W(K.H,all);
+  return all[cid][u];
+}
+function isHelpPurchased(rec){ return !!(rec && rec.paidAt); }
+function hasHelp(cid,u,mid){
+  const rec=getHelpRec(cid,u);
+  return (rec?.usedMatchIds||[]).includes(mid);
+}
+
+/* PICKS */
+function picksAll(){ return R(K.P,{}); }
+function getMyMap(cid,u){ return picksAll()?.[cid]?.[u]||{}; }
+function savePick(cid,u,mid,val){
+  const all=picksAll();
+  all[cid]=all[cid]||{};
+  all[cid][u]=all[cid][u]||{};
+  all[cid][u][mid]={pick:val,ts:now()};
+  W(K.P,all);
+}
+function deletePick(cid,u,mid){
+  const all=picksAll();
+  if(all?.[cid]?.[u]?.[mid]){ delete all[cid][u][mid]; W(K.P,all); }
+}
+function setAllOff(cid,u,matches){
+  const all=picksAll();
+  all[cid]=all[cid]||{};
+  all[cid][u]=all[cid][u]||{};
+  for(const m of matches){
+    if(!m) continue;
+    all[cid][u][m.id]={pick:'OFF',ts:now()};
+  }
+  W(K.P,all);
+}
+
+/* HELP WARN */
+function warnKey(cid,u){ return `w_${cid}_${u}`; }
+function getWarn(cid,u){ return Number((R(K.WARN,{})||{})[warnKey(cid,u)]||0); }
+function setWarn(cid,u,v){
+  const all=R(K.WARN,{});
+  all[warnKey(cid,u)]=Number(v)||0; W(K.WARN,all);
+}
+
+/* Validate lock */
+function canLockAllPicks(cid,u,matches){
+  const map=getMyMap(cid,u);
+  for(const m of matches){
+    if(!m) continue;
+    if(m.off===true) continue;
+    const p=(map?.[m.id]?.pick||'').trim();
+    if(!p) return false;
+    if(p==='OFF') return false;
+  }
+  return true;
+}
+
+/* ✅ GO PAY (Acode-safe) */
+function goPay(){
+  const s=sess();
+  const active=R(K.A,null);
+  const cid=active?.id;
+  const matches=R(K.M,[]);
+  const dl=deadlineMsFromMatches(matches);
+  const timeLocked = (dl && now()>=dl);
+  const userLocked = (s && cid) ? isLocked(cid,s.username) : false;
+
+  // ✅ block new user after contest started
+  const meta = (cid ? (R(K.META,{})[cid]||{}) : {});
+  const started = meta.contestStarted===true;
+  const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
+  const me = String(s?.username||'').toLowerCase();
+  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+  if(blocked) return T('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να αγοράσεις.');
+
+  if(!s) return location.href='login.html';
+  if(!cid) return T('⛔ Δεν υπάρχει ενεργός διαγωνισμός');
+  // ✅ NEW: αν δεν υπάρχουν αγώνες, δεν επιτρέπεται αγορά
+  const validMatches = (matches || []).filter(m => m && m.off !== true);
+  if(!validMatches.length) return T('⛔ Δεν υπάρχουν αγώνες — δεν γίνεται αγορά HELP');
+  if(timeLocked) return T('🔒 Έκλεισε ο χρόνος — δεν γίνεται αγορά');
+  if(userLocked) return T('🔒 Έχεις κλειδώσει — δεν γίνεται αγορά');
+
+  const before = location.href;
+  T('➡️ Άνοιγμα αγοράς...');
+
+  const tries = [
+    'pay.html',
+    './pay.html',
+    (location.origin ? (location.origin + '/pay.html') : null),
+    'http://localhost:8158/pay.html'
+  ].filter(Boolean);
+
+  let i = 0;
+  const tryNav = ()=>{
+    try { window.location.href = tries[i]; } catch(e) {}
+    i++;
+    setTimeout(()=>{
+      if(location.href === before && i < tries.length) return tryNav();
+      if(location.href === before){
+        T('⛔ Το Acode preview δεν σερβίρει όλα τα αρχεία του folder. Άνοιξε το pay.html με Play ή τρέξε server για όλο το folder.');
+      }
+    }, 180);
+  };
+  tryNav();
+}
+
+/* TOGGLE HELP */
+function toggleHelp(cid,u,mid){
+  const matches=R(K.M,[]);
+  const dl=deadlineMsFromMatches(matches);
+  if(dl && now()>=dl) return T('🔒 Έκλεισε ο χρόνος');
+  if(isLocked(cid,u)) return T('🔒 Έχεις κλειδώσει τις προβλέψεις σου');
+
+  // ✅ block new user after contest started
+  const meta = (R(K.META,{})[cid]||{});
+  const started = meta.contestStarted===true;
+  const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
+  const me = String(u||'').toLowerCase();
+  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+  if(blocked) return T('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να παίξεις.');
+
+  const m=(matches||[]).find(x=>x && x.id===mid);
+  if(m && m.off===true) return T('OFF αγώνας (αναβολή)');
+
+  const rec=ensureHelpRec(cid,u);
+  if(!isHelpPurchased(rec)) return T('💶 Πρέπει πρώτα να αγοράσεις HELP (€1,99)');
+
+  // Cancel
+  if(rec.usedMatchIds.includes(mid)){
+    rec.usedMatchIds=rec.usedMatchIds.filter(x=>x!==mid);
+    rec.remaining++;
+    const all=helpAll(); all[cid]=all[cid]||{}; all[cid][u]=rec; W(K.H,all);
+    deletePick(cid,u,mid);
+    T('↩️ Ακύρωση HELP');
+    return render();
+  }
+
+  // Apply
+  if(rec.remaining<=0) return T('⛔ Δεν έχεις άλλο HELP (έβαλες ήδη 3).');
+  rec.remaining--;
+  rec.usedMatchIds.push(mid);
+  const all=helpAll(); all[cid]=all[cid]||{}; all[cid][u]=rec; W(K.H,all);
+
+  savePick(cid,u,mid,'HELP');
+  T('✅ Μπήκε HELP');
+  render();
+}
+
+/* LOCK BUTTON */
+function onLockBtn(cid,u,matches){
+  const dl=deadlineMsFromMatches(matches);
+  // ✅ NEW: δεν κλειδώνεις αν δεν υπάρχουν αγώνες (ή όλοι είναι OFF)
+  const validMatches = (matches || []).filter(m => m && m.off !== true);
+  if(!validMatches.length) return T('⛔ Δεν υπάρχουν αγώνες για κλείδωμα');
+  const timeLocked = (dl && now()>=dl);
+  if(timeLocked) return T('🔒 Έκλεισε ο χρόνος');
+
+  // ✅ block new user after contest started
+  const meta = (R(K.META,{})[cid]||{});
+  const started = meta.contestStarted===true;
+  const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
+  const me = String(u||'').toLowerCase();
+  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+  if(blocked) return T('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να παίξεις.');
+
+  const cur=isLocked(cid,u);
+  if(cur){
+    setLocked(cid,u,false);
+    T('🔓 Ξεκλείδωσες τις προβλέψεις σου');
+    return render();
+  }
+  if(!canLockAllPicks(cid,u,matches)){
+    return T('⛔ Δεν κλειδωσες πρόβλεψη για όλα τα παιχνίδια της αγωνιστικής');
+  }
+  setLocked(cid,u,true);
+  T('✅ Κλείδωσες τις προβλέψεις σου');
+  render();
+}
+
+/* SAVE PICK */
+function onSavePick(cid,u,mid){
+  const matches=R(K.M,[]);
+  const dl=deadlineMsFromMatches(matches);
+  if(dl && now()>=dl) return T('🔒 Έκλεισε ο χρόνος');
+  if(isLocked(cid,u)) return T('🔒 Έχεις κλειδώσει τις προβλέψεις σου');
+
+  // ✅ block new user after contest started
+  const meta = (R(K.META,{})[cid]||{});
+  const started = meta.contestStarted===true;
+  const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
+  const me = String(u||'').toLowerCase();
+  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+  if(blocked) return T('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να παίξεις.');
+
+  const m=(matches||[]).find(x=>x && x.id===mid);
+  if(m && m.off===true) return T('OFF αγώνας (αναβολή)');
+
+  const rec=getHelpRec(cid,u);
+  const purchased=isHelpPurchased(rec);
+  const remaining=Number(rec?.remaining||0);
+
+  if(purchased && remaining>0){
+    const w=getWarn(cid,u);
+    if(w<2){
+      if(!confirm(`Σου έμειναν ${remaining} HELP. Είσαι σίγουρος ότι δεν θες να τα βάλεις;`)) return;
+      if(!confirm('ΣΙΓΟΥΡΑ;')) return;
+      setWarn(cid,u,2);
+    }
+  }
+
+  const sel=$('sel_'+mid);
+  const v=(sel?.value||'').trim();
+  if(!v) return T('Διάλεξε 1/X/2');
+
+  savePick(cid,u,mid,v);
+  T('✅ Έγινε Save');
+  render();
+}
+
+function render(){
+  const s=sess();
+  if(!s) return location.href='login.html';
+  $('userPill').textContent='Χρήστης: '+s.username;
+
+  const active=R(K.A,null);
+  if(!active){ $('matches').innerHTML='<div class="pill">Δεν υπάρχει διαγωνισμός</div>'; return; }
+  const cid=active.id;
+
+  const meta=R(K.META,{})[cid]||{};
+  $('contestInfo').textContent='Contest: '+cid;
+  $('roundInfo').textContent='Αγωνιστική: '+(meta.round||1);
+  $('prizeText').textContent=(String(meta.prizeText||'').trim() || '-');
+
+  const matches=R(K.M,[]);
+  const dl=deadlineMsFromMatches(matches);
+  $('dlPill').textContent='Deadline: '+(dl?fmt(dl):'-');
+
+  const timeLocked = (dl && now()>=dl);
+  const userLocked = isLocked(cid,s.username);
+
+  // ✅ block new user after contest started
+  const started = meta.contestStarted===true;
+  const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
+  const me = String(s.username||'').toLowerCase();
+  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+  $('blockedBox').style.display = blocked ? 'block' : 'none';
+
+  const effectiveLocked = blocked || timeLocked || userLocked;
+
+// ✅ ΑΓΟΡΑ
+  $('buyBtn').onclick = ()=> goPay();
+
+  const recUI=ensureHelpRec(cid,s.username);
+  const purchasedUI=isHelpPurchased(recUI);
+
+  // ✅ NEW: disable αν δεν υπάρχουν αγώνες (ή όλοι είναι OFF)
+  const validMatches = (matches || []).filter(m => m && m.off !== true);
+  const noGames = !validMatches.length;
+
+  // δεν σε αφήνει να ξαναγοράσεις / μετά από lock / μετά από deadline / μετά από blocked / χωρίς αγώνες
+  $('buyBtn').disabled = !!timeLocked || userLocked || purchasedUI || blocked || noGames;
+
+  // ✅ NEW: μήνυμα στο pill όταν δεν υπάρχουν αγώνες
+  if(noGames){
+    $('helpPill').textContent = 'HELP: ⛔ Δεν υπάρχουν αγώνες';
+  }
+const remaining=Number(recUI?.remaining||0);
+  const usedCount=Number((recUI?.usedMatchIds||[]).length||0);
+
+  if(!noGames){
+    if(!purchasedUI) $('helpPill').textContent='HELP: ❌ (δεν αγόρασες)';
+    else $('helpPill').textContent=`HELP: ✅ ${remaining} left • used ${usedCount}/3`;
+  }
+
+  $('lockBtn').textContent = userLocked ? '🔓 Ξεκλείδωμα προβλέψεων' : '🔒 Κλείδωμα προβλέψεων';
+  $('lockBtn').onclick = ()=>onLockBtn(cid,s.username,matches);
+$('lockBtn').disabled = !!timeLocked || blocked || noGames;
+  $('lockState').textContent =
+    'Κατάσταση: ' +
+    (blocked ? '⛔ Δεν μπορείς να παίξεις (μπήκες μετά την έναρξη)'
+             : (timeLocked ? '🔒 Έκλεισε ο χρόνος'
+                           : (userLocked?'🔴 Κλειδωμένες':'🟢 Ανοικτές')));
+
+  if(timeLocked && !userLocked){
+    setAllOff(cid,s.username,matches);
+    setLocked(cid,s.username,true);
+  }
+
+  const myMap=getMyMap(cid,s.username);
+
+  $('matches').innerHTML = (Array.isArray(matches)&&matches.length)? matches.map(m=>{
+    const saved=(myMap?.[m.id]?.pick||'').trim();
+    const helpOn = hasHelp(cid,s.username,m.id) || saved==='HELP';
+    const off = (m.off===true);
+
+    const canPick = (!effectiveLocked) && (!helpOn) && (!off);
+    const lockClass = effectiveLocked ? 'lockedPick' : '';
+
+    const canHelpBtn =
+      (!effectiveLocked) && (!off) && purchasedUI && (helpOn || remaining>0);
+
+    return `
+    <div class="match ${off?'off':''} ${lockClass}">
+      <div><b>${m.home||'?'} vs ${m.away||'?'}</b></div>
+      <div class="mini">${m.date||''} ${m.time||''} ${off?'• OFF (αναβολή)':''}</div>
+
+      <div class="row" style="margin-top:8px">
+        <select id="sel_${m.id}" ${canPick?'':'disabled'}>
+          <option value=""></option>
+          <option value="1" ${saved==='1'?'selected':''}>1</option>
+          <option value="X" ${saved==='X'?'selected':''}>X</option>
+          <option value="2" ${saved==='2'?'selected':''}>2</option>
+        </select>
+
+        <button class="btn g" ${canPick?'':'disabled'} onclick="onSavePick('${cid}','${s.username}','${m.id}')">Save</button>
+
+        <button class="btn bl" ${canHelpBtn?'':'disabled'} onclick="toggleHelp('${cid}','${s.username}','${m.id}')">
+          ${helpOn?'↩️ Ακύρωση HELP':'🪄 HELP'}
+        </button>
+
+        <div class="pill">Pick: <b>${saved||'-'}</b></div>
+      </div>
+
+      ${m.result?`
+        <div class="mini" style="margin-top:8px"><b>Τελικό:</b> ${m.result}</div>
+        <div class="mini"><b>Η πρόβλεψή σου:</b> ${saved||'-'}</div>
+      `:''}
+    </div>`;
+  }).join('') : '<div class="pill">Δεν υπάρχουν αγώνες ακόμα.</div>';
+}
+
+/* expose for inline onclick */
+window.onSavePick = onSavePick;
+window.toggleHelp = toggleHelp;
+
+/* toast on return from pay */
+(function(){
+  const qs = new URLSearchParams(location.search);
+  if(qs.get('paid')==='1'){
+    T('✅ Πληρωμή καταχωρήθηκε — έτοιμο το HELP!');
+    history.replaceState({}, document.title, 'dashboard.html');
+  }
+})();
+
+render();
+</script>
+</body>
+</html>
