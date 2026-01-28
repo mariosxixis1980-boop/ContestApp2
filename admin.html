@@ -214,17 +214,20 @@ import { supabase } from "./supabase.js";
 // 🔒 PROTECT ADMIN
 const { data: { session } } = await supabase.auth.getSession();
 
-if (!session) {
+if (!session || !session.user) {
   location.replace("login.html");
+  throw new Error("Not logged in");
 }
 
-// email admin (βάζεις ΤΟ ΔΙΚΟ ΣΟΥ)
+// 👉 ΒΑΛΕ ΤΟ ADMIN EMAIL ΣΟΥ
 const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
 
 if (session.user.email !== ADMIN_EMAIL) {
   location.replace("login.html");
+  throw new Error("Not admin");
 }
 </script>
+
 
 </body>
 </html>
