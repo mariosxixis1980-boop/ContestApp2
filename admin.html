@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Admin</title>
+<title>Admin • Cyprus Match Predict</title>
 <style>
 :root{
   --bg:#070b13;--b:rgba(255,255,255,.12);
@@ -58,33 +58,35 @@ label{display:block;margin-top:8px;color:var(--m);font-weight:800}
 .match{border:1px solid var(--b);border-radius:16px;background:rgba(0,0,0,.18);padding:12px;margin-top:10px}
 .off{background:rgba(0,0,0,.45);opacity:.92}
 .resultsLockedCard{background:rgba(231,76,60,.12)!important;border-color:rgba(231,76,60,.45)!important}
-.toast{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:16px;
-  padding:10px 12px;border-radius:999px;border:1px solid var(--b);
-  background:rgba(0,0,0,.55);display:none;z-index:9999;
-  max-width:min(92vw,760px);text-align:center
-}
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{border-bottom:1px solid rgba(255,255,255,.10);padding:10px;text-align:left;vertical-align:top}
 th{color:var(--m)}
 hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
+
+/* ✅ Inline notification (αντί toast) */
+.notice{
+  display:none;
+  border:1px solid var(--b);
+  border-radius:16px;
+  background:rgba(0,0,0,.18);
+  padding:10px 12px;
+  margin-top:12px;
+  font-weight:900;
+}
+.notice.ok{ border-color:rgba(46,204,113,.45); background:rgba(46,204,113,.12); }
+.notice.warn{ border-color:rgba(241,196,15,.45); background:rgba(241,196,15,.10); }
+.notice.err{ border-color:rgba(231,76,60,.45); background:rgba(231,76,60,.12); }
 </style>
 </head>
 
 <body>
 <div class="card">
 
-<div style="text-align:center;margin-bottom:12px;">
-    <div style="font-size:18px;font-weight:700;">
-        Cyprus Match Predict
-    </div>
-</div>
-
-  <h1>🔐 Login</h1>
-  <div class="sub">
-    Βάλε username & password. Email (προαιρετικό) μόνο στην εγγραφή.
+  <div style="text-align:center;margin-bottom:12px;">
+    <div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
+    <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾 ADMIN 🇨🇾</div>
   </div>
-  
+
   <h1>🛠️ Admin</h1>
   <div class="sub">RESET (νέος διαγωνισμός), κλείδωμα διαγωνισμού, αγώνες/OFF, τελικά, κλείδωμα τελικών (auto βαθμοί), close&next (24h cleanup), ενεργοί/users/€1.99, ημερομηνία επόμενου.</div>
 
@@ -99,6 +101,9 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
     <div class="pill" id="dlTop">Deadline:-</div>
     <button class="btn" id="re" type="button">↻ Φόρτωσε</button>
   </div>
+
+  <!-- ✅ Inline feedback area -->
+  <div id="notice" class="notice"></div>
 
   <div id="guard" class="box" style="display:none;border-color:rgba(231,76,60,.45);background:rgba(231,76,60,.14);margin-top:12px">
     <b>Δεν είσαι admin.</b>
@@ -157,8 +162,6 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
           <div class="row" style="margin-top:0">
             <button class="btn a" id="lockResultsBtn" type="button">🟡 Κλείδωμα Τελικών</button>
             <button class="btn a" id="nx" type="button">🟡 Close & Next</button>
-
-            <!-- ✅ ΝΕΟ: Final Week button -->
             <button class="btn" id="finalWeekBtn" type="button">🏁 Final Week: -</button>
           </div>
           <div class="mini" id="hint" style="margin-top:8px">
@@ -203,8 +206,6 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
     </div>
   </div>
 </div>
-
-<div id="to" class="toast"></div>
 
 <script src="admin.js"></script>
 </body>
