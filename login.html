@@ -366,9 +366,16 @@ document.addEventListener("DOMContentLoaded", () => {
     /* =========================
        INIT
     ========================= */
-    clearSession();
-    showLogin();
-    renderNextContest();
+   // ✅ Αν υπάρχει session, μην δείχνεις login ξανά
+const sess = R(KEY_SESSION, null);
+if (sess && sess.username) {
+  location.href = sess.isAdmin ? 'admin.html' : 'dashboard.html';
+  return;
+}
+
+showLogin();
+renderNextContest();
+
 
    }catch (err) {
     console.error("JS ERROR:", err);
