@@ -151,7 +151,6 @@
     </p>
   </div>
 
-  <div id="toast" class="pill"></div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -169,15 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const $ = (id) => document.getElementById(id);
     const R = (k,f)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(f)); } catch { return f; } };
     const W = (k,v)=>localStorage.setItem(k, JSON.stringify(v));
-
-    function toast(msg){
-      const t = $('toast');
-      if(!t) { alert("TOAST MISSING"); return; }
-      t.textContent = msg;
-      t.style.display = 'block';
-      clearTimeout(window.__tt);
-      window.__tt = setTimeout(()=> t.style.display='none', 2400);
-    }
 
     function norm(s){ return String(s||'').trim(); }
     function normUser(u){ return norm(u).toLowerCase(); }
@@ -341,7 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     $('tabLogin').addEventListener('click', showLogin);
     $('tabRegister').addEventListener('click', showRegister);
-    $('loginBtn').addEventListener('click', () => { toast("CLICK ✅"); doLogin(); });
+    $('loginBtn').addEventListener('click', doLogin);
     $('clearBtn').addEventListener('click', clearLoginInputs);
     $('regBtn').addEventListener('click', doRegister);
     $('regClearBtn').addEventListener('click', clearRegisterInputs);
@@ -354,12 +344,11 @@ document.addEventListener("DOMContentLoaded", () => {
     renderNextContest();
 
     // ✅ αυτό θα εμφανιστεί ΜΟΝΟ αν τρέχει το JS σωστά
-    toast("JS READY ✅");
+  
+  }catch (err) {
+  console.error("JS ERROR:", err);
+}
 
-  } catch (err) {
-    alert("JS ERROR: " + (err && err.message ? err.message : err));
-    console.error(err);
-  }
 });
 </script>
 </body>
