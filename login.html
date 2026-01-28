@@ -69,12 +69,8 @@
 <body>
   <div class="card">
     <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:18px;font-weight:700;">
-        Cyprus Match Predict
-      </div>
-      <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">
-        🇨🇾  C.M.P 🇨🇾
-      </div>
+      <div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
+      <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾  C.M.P 🇨🇾</div>
     </div>
 
     <h1>🔐 Login</h1>
@@ -141,261 +137,256 @@
     </p>
   </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  try {
-    /* =========================
-       STORAGE KEYS
-    ========================= */
-    const KEY_SESSION = 'session';
-    const KEY_USERS   = 'users';
-    const KEY_NEXT    = 'nextContestStartISO';
-
-    /* =========================
-       HELPERS
-    ========================= */
-    const $ = (id) => document.getElementById(id);
-    const R = (k,f)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(f)); } catch { return f; } };
-    const W = (k,v)=>localStorage.setItem(k, JSON.stringify(v));
-
-    function norm(s){ return String(s||'').trim(); }
-    function normUser(u){ return norm(u).toLowerCase(); }
-    function isValidEmail(email){
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    function setInlineMsg(id, msg){
-      const el = $(id);
-      if(!el) return;
-      const text = String(msg || '').trim();
-      if(text){
-        el.textContent = text;
-        el.style.display = 'block';
-      }else{
-        el.textContent = '';
-        el.style.display = 'none';
-      }
-    }
-    function clearMsgs(){
-      setInlineMsg('loginErr','');
-      setInlineMsg('regErr','');
-    }
-
-    /* =========================
-       NEXT CONTEST
-    ========================= */
-    function fmtDateGreek(isoDate){
-      const s = String(isoDate||'').trim();
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-      const [yy,mm,dd] = s.split('-');
-      return `${dd}/${mm}/${yy}`;
-    }
-    function renderNextContest(){
-      const iso = String(R(KEY_NEXT,'') || '').trim();
-      const pretty = fmtDateGreek(iso);
-
-      if(pretty){
-        $('nextText').textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
-        $('nextSub').textContent = 'Μέχρι τότε μπορείς να κάνεις login κανονικά.';
-      }else{
-        $('nextText').textContent = 'Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα';
-        $('nextSub').textContent = 'Ο admin θα βάλει ημερομηνία από το Admin Panel.';
-      }
-    }
-
-    /* =========================
-       USERS
-    ========================= */
-    function usersAll(){
-      const u = R(KEY_USERS, []);
-      return Array.isArray(u) ? u : [];
-    }
-    function saveUsers(arr){
-      W(KEY_USERS, Array.isArray(arr)?arr:[]);
-    }
-    function findUser(username){
-      const u = normUser(username);
-      return usersAll().find(x => normUser(x.username) === u) || null;
-    }
-    function upsertUser(user){
-      const arr = usersAll();
-      const u = normUser(user.username);
-      const i = arr.findIndex(x => normUser(x.username) === u);
-      if(i >= 0) arr[i] = user;
-      else arr.push(user);
-      saveUsers(arr);
-    }
-
-    /* =========================
-       ADMIN
-    ========================= */
-    function isAdminCredentials(username, password){
-      const U = 'marios';
-      const P = '1234';
-      return normUser(username) === U && String(password||'') === P;
-    }
-
-    /* =========================
-       SESSION
-    ========================= */
-    function setSession(s){ W(KEY_SESSION, s); }
-    function clearSession(){ localStorage.removeItem(KEY_SESSION); }
-
-    /* =========================
-       UI TABS
-    ========================= */
-    function showLogin(){
-      clearMsgs();
-      $('loginBox').classList.remove('hide');
-      $('registerBox').classList.add('hide');
-      $('tabLogin').className = 'btn a tab';
-      $('tabRegister').className = 'btn tab';
-    }
-    function showRegister(){
-      clearMsgs();
-      $('registerBox').classList.remove('hide');
-      $('loginBox').classList.add('hide');
-      $('tabRegister').className = 'btn a tab';
-      $('tabLogin').className = 'btn tab';
-    }
-
-    /* =========================
-       ACTIONS
-    ========================= */
-    function doLogin(){
-      setInlineMsg('loginErr','');
-
-      const username = norm($('loginUser').value);
-      const password = String($('loginPass').value || '');
-
-      if(!username || !password){
-        return setInlineMsg('loginErr','Γράψε username και password.');
-      }
-
-      if(isAdminCredentials(username, password)){
-        setSession({ username: normUser(username), isAdmin: true });
-        return setTimeout(()=> location.href='admin.html', 200);
-      }
-
-      const u = findUser(username);
-      if(!u){
-        return setInlineMsg('loginErr','Δεν βρέθηκε χρήστης με αυτό το username.');
-      }
-
-      if(String(u.password) !== password){
-        return setInlineMsg('loginErr','Λάθος password. Δοκίμασε ξανά.');
-      }
-
-      setSession({ username: u.username, isAdmin: !!u.isAdmin });
-      setTimeout(()=> location.href='dashboard.html', 200);
-    }
-
-    function doRegister(){
-      setInlineMsg('regErr','');
-
-      const username = norm($('regUser').value);
-      const password = String($('regPass').value || '');
-      const emailRaw = norm($('regEmail').value).toLowerCase();
-
-      if(!username || !password){
-        return setInlineMsg('regErr','Βάλε username και password για εγγραφή.');
-      }
-
-      if(findUser(username)){
-        return setInlineMsg('regErr','Αυτό το username είναι ήδη χρησιμοποιημένο.');
-      }
-
-      if(emailRaw !== '' && !isValidEmail(emailRaw)){
-        return setInlineMsg('regErr','Το email δεν είναι έγκυρο.');
-      }
-
-      if(normUser(username) === 'marios'){
-        return setInlineMsg('regErr','Το username "marios" είναι δεσμευμένο για τον admin.');
-      }
-
-      const user = {
-        username,
-        password,
-        email: emailRaw || null,
-        isAdmin: false,
-        createdAt: Date.now()
-      };
-
-      upsertUser(user);
-
-      // Μετά την εγγραφή → πήγαινε Login & βάλε το username έτοιμο
-      showLogin();
-      $('loginUser').value = user.username;
-      $('loginPass').value = '';
-      setInlineMsg('loginErr','✅ Έγινε εγγραφή! Τώρα κάνε login.');
-    }
-
-    function clearLoginInputs(){
-      $('loginUser').value = '';
-      $('loginPass').value = '';
-      setInlineMsg('loginErr','');
-    }
-
-    function clearRegisterInputs(){
-      $('regUser').value = '';
-      $('regPass').value = '';
-      $('regEmail').value = '';
-      setInlineMsg('regErr','');
-    }
-
-    /* =========================
-       BIND EVENTS (με έλεγχο)
-    ========================= */
-    const requiredIds = [
-      'tabLogin','tabRegister','loginBtn','clearBtn','regBtn','regClearBtn',
-      'loginBox','registerBox','nextText','nextSub',
-      'loginUser','loginPass','regUser','regPass','regEmail',
-      'loginErr','regErr'
-    ];
-    for(const id of requiredIds){
-      if(!$(id)) throw new Error("Missing element id: " + id);
-    }
-
-    $('tabLogin').addEventListener('click', showLogin);
-    $('tabRegister').addEventListener('click', showRegister);
-    $('loginBtn').addEventListener('click', doLogin);
-    $('clearBtn').addEventListener('click', clearLoginInputs);
-    $('regBtn').addEventListener('click', doRegister);
-    $('regClearBtn').addEventListener('click', clearRegisterInputs);
-
-    /* =========================
-       INIT
-    ========================= */
-   // ✅ Αν υπάρχει session, μην δείχνεις login ξανά
-const sess = R(KEY_SESSION, null);
-if (sess && sess.username) {
-  location.href = sess.isAdmin ? 'admin.html' : 'dashboard.html';
-  return;
-}
-
-showLogin();
-renderNextContest();
-
-
-   }catch (err) {
-    console.error("JS ERROR:", err);
-    document.body.insertAdjacentHTML(
-      "afterbegin",
-      `<div style="position:fixed;top:12px;left:12px;right:12px;z-index:99999;
-        background:rgba(231,76,60,.18);border:1px solid rgba(231,76,60,.55);
-        color:#ffd3d3;padding:10px 12px;border-radius:14px;font-weight:900">
-        JS ERROR: ${String(err && err.message ? err.message : err)}
-      </div>`
-    );
-  }
-
-});
-</script>
+  <!-- ✅ ΜΟΝΟ ΕΝΑ SCRIPT (MODULE) -->
   <script type="module">
-  import { supabase } from "./supabase.js";
+    import { supabase } from "./supabase.js";
 
-  console.log("SUPABASE OK:", supabase);
-</script>
+    // TEST ότι φορτώνει το supabase.js σωστά
+    console.log("SUPABASE OK:", supabase);
+
+    try {
+      /* =========================
+         STORAGE KEYS
+      ========================= */
+      const KEY_SESSION = 'session';
+      const KEY_USERS   = 'users';
+      const KEY_NEXT    = 'nextContestStartISO';
+
+      /* =========================
+         HELPERS
+      ========================= */
+      const $ = (id) => document.getElementById(id);
+      const R = (k,f)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(f)); } catch { return f; } };
+      const W = (k,v)=>localStorage.setItem(k, JSON.stringify(v));
+
+      function norm(s){ return String(s||'').trim(); }
+      function normUser(u){ return norm(u).toLowerCase(); }
+      function isValidEmail(email){
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      }
+
+      function setInlineMsg(id, msg){
+        const el = $(id);
+        if(!el) return;
+        const text = String(msg || '').trim();
+        if(text){
+          el.textContent = text;
+          el.style.display = 'block';
+        }else{
+          el.textContent = '';
+          el.style.display = 'none';
+        }
+      }
+      function clearMsgs(){
+       _topics('loginErr','');
+        setInlineMsg('regErr','');
+      }
+      function _topics(id,msg){ setInlineMsg(id,msg); } // μικρό alias για να μην σπάσει τίποτα
+
+      /* =========================
+         NEXT CONTEST
+      ========================= */
+      function fmtDateGreek(isoDate){
+        const s = String(isoDate||'').trim();
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+        const [yy,mm,dd] = s.split('-');
+        return `${dd}/${mm}/${yy}`;
+      }
+      function renderNextContest(){
+        const iso = String(R(KEY_NEXT,'') || '').trim();
+        const pretty = fmtDateGreek(iso);
+
+        if(pretty){
+          $('nextText').textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
+          $('nextSub').textContent = 'Μέχρι τότε μπορείς να κάνεις login κανονικά.';
+        }else{
+          $('nextText').textContent = 'Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα';
+          $('nextSub').textContent = 'Ο admin θα βάλει ημερομηνία από το Admin Panel.';
+        }
+      }
+
+      /* =========================
+         USERS (τοπικά — για τώρα)
+      ========================= */
+      function usersAll(){
+        const u = R(KEY_USERS, []);
+        return Array.isArray(u) ? u : [];
+      }
+      function saveUsers(arr){
+        W(KEY_USERS, Array.isArray(arr)?arr:[]);
+      }
+      function findUser(username){
+        const u = normUser(username);
+        return usersAll().find(x => normUser(x.username) === u) || null;
+      }
+      function upsertUser(user){
+        const arr = usersAll();
+        const u = normUser(user.username);
+        const i = arr.findIndex(x => normUser(x.username) === u);
+        if(i >= 0) arr[i] = user;
+        else arr.push(user);
+        saveUsers(arr);
+      }
+
+      /* =========================
+         ADMIN
+      ========================= */
+      function isAdminCredentials(username, password){
+        const U = 'marios';
+        const P = '1234';
+        return normUser(username) === U && String(password||'') === P;
+      }
+
+      /* =========================
+         SESSION
+      ========================= */
+      function setSession(s){ W(KEY_SESSION, s); }
+
+      /* =========================
+         UI TABS
+      ========================= */
+      function showLogin(){
+        clearMsgs();
+        $('loginBox').classList.remove('hide');
+        $('registerBox').classList.add('hide');
+        $('tabLogin').className = 'btn a tab';
+        $('tabRegister').className = 'btn tab';
+      }
+      function showRegister(){
+        clearMsgs();
+        $('registerBox').classList.remove('hide');
+        $('loginBox').classList.add('hide');
+        $('tabRegister').className = 'btn a tab';
+        $('tabLogin').className = 'btn tab';
+      }
+
+      /* =========================
+         ACTIONS
+      ========================= */
+      function doLogin(){
+        setInlineMsg('loginErr','');
+
+        const username = norm($('loginUser').value);
+        const password = String($('loginPass').value || '');
+
+        if(!username || !password){
+          return setInlineMsg('loginErr','Γράψε username και password.');
+        }
+
+        if(isAdminCredentials(username, password)){
+          setSession({ username: normUser(username), isAdmin: true });
+          return setTimeout(()=> location.href='admin.html', 200);
+        }
+
+        const u = findUser(username);
+        if(!u){
+          return setInlineMsg('loginErr','Δεν βρέθηκε χρήστης με αυτό το username.');
+        }
+
+        if(String(u.password) !== password){
+          return setInlineMsg('loginErr','Λάθος password. Δοκίμασε ξανά.');
+        }
+
+        setSession({ username: u.username, isAdmin: !!u.isAdmin });
+        setTimeout(()=> location.href='dashboard.html', 200);
+      }
+
+      function doRegister(){
+        setInlineMsg('regErr','');
+
+        const username = norm($('regUser').value);
+        const password = String($('regPass').value || '');
+        const emailRaw = norm($('regEmail').value).toLowerCase();
+
+        if(!username || !password){
+          return setInlineMsg('regErr','Βάλε username και password για εγγραφή.');
+        }
+
+        if(findUser(username)){
+          return setInlineMsg('regErr','Αυτό το username είναι ήδη χρησιμοποιημένο.');
+        }
+
+        if(emailRaw !== '' && !isValidEmail(emailRaw)){
+          return setInlineMsg('regErr','Το email δεν είναι έγκυρο.');
+        }
+
+        if(normUser(username) === 'marios'){
+          return setInlineMsg('regErr','Το username "marios" είναι δεσμευμένο για τον admin.');
+        }
+
+        const user = {
+          username,
+          password,
+          email: emailRaw || null,
+          isAdmin: false,
+          createdAt: Date.now()
+        };
+
+        upsertUser(user);
+
+        showLogin();
+        $('loginUser').value = user.username;
+        $('loginPass').value = '';
+        setInlineMsg('loginErr','✅ Έγινε εγγραφή! Τώρα κάνε login.');
+      }
+
+      function clearLoginInputs(){
+        $('loginUser').value = '';
+        $('loginPass').value = '';
+        setInlineMsg('loginErr','');
+      }
+
+      function clearRegisterInputs(){
+        $('regUser').value = '';
+        $('regPass').value = '';
+        $('regEmail').value = '';
+        setInlineMsg('regErr','');
+      }
+
+      /* =========================
+         BIND EVENTS (με έλεγχο)
+      ========================= */
+      const requiredIds = [
+        'tabLogin','tabRegister','loginBtn','clearBtn','regBtn','regClearBtn',
+        'loginBox','registerBox','nextText','nextSub',
+        'loginUser','loginPass','regUser','regPass','regEmail',
+        'loginErr','regErr'
+      ];
+      for(const id of requiredIds){
+        if(!$(id)) throw new Error("Missing element id: " + id);
+      }
+
+      $('tabLogin').addEventListener('click', showLogin);
+      $('tabRegister').addEventListener('click', showRegister);
+      $('loginBtn').addEventListener('click', doLogin);
+      $('clearBtn').addEventListener('click', clearLoginInputs);
+      $('regBtn').addEventListener('click', doRegister);
+      $('regClearBtn').addEventListener('click', clearRegisterInputs);
+
+      /* =========================
+         INIT
+      ========================= */
+      const sess = R(KEY_SESSION, null);
+      if (sess && sess.username) {
+        location.href = sess.isAdmin ? 'admin.html' : 'dashboard.html';
+      } else {
+        showLogin();
+        renderNextContest();
+      }
+
+    } catch (err) {
+      console.error("JS ERROR:", err);
+      document.body.insertAdjacentHTML(
+        "afterbegin",
+        `<div style="position:fixed;top:12px;left:12px;right:12px;z-index:99999;
+          background:rgba(231,76,60,.18);border:1px solid rgba(231,76,60,.55);
+          color:#ffd3d3;padding:10px 12px;border-radius:14px;font-weight:900">
+          JS ERROR: ${String(err && err.message ? err.message : err)}
+        </div>`
+      );
+    }
+  </script>
 
 </body>
 </html>
+
