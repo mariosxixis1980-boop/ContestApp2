@@ -5,6 +5,7 @@
    - bonusStreakMax (max consecutive bonus weeks)
    - nearPerfectCount (weeks with exactly 1 miss, i.e. ok===req-1)
    ✅ Also clears meta.finalWinner when points change (lockFinalResults) or nextRound starts
+   ✅ UPDATED: Professional inline notifications (N) instead of toast (T)
 ========================= */
 
 const K={
@@ -19,26 +20,57 @@ const K={
   META:'contestMeta',
   RL:'roundLockedAt',
   NEXT:'nextContestStartISO',
-  LOCK:'picksLocked',          // ✅ για να ξεκλειδώνουμε όλους στην επόμενη αγωνιστική
-  TIE:'tieStatsByContest'      // ✅ NEW: tie-break stats για Final Week
+  LOCK:'picksLocked',
+  TIE:'tieStatsByContest'
 };
 
 const $=id=>document.getElementById(id);
 const R=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
 const W=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const now=()=>Date.now();
-const T=m=>{
-  const x=$('to');
-  x.textContent=m;
-  x.style.display='block';
-  clearTimeout(window.__t);
-  window.__t=setTimeout(()=>x.style.display='none',2300);
-};
+
 const E=s=>String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const sess=()=>R(K.S,null);
 const isAdm=s=>!!(s && (s.isAdmin===true || String(s.username||'').toLowerCase()==='marios'));
 
 let active=null,matches=[];
+
+/* =========================
+   ✅ INLINE NOTIFICATIONS (Admin)
+   writes to <div id="notice">
+========================= */
+function N(msg, type='warn'){
+  const el = $('notice');
+  if(!el) return;
+
+  const t = String(msg||'').trim();
+  if(!t){
+    el.textContent = '';
+    el.className = 'notice';
+    el.style.display = 'none';
+    return;
+  }
+
+  const cls = (type==='ok'?'ok':type==='err'?'err':'warn');
+  el.textContent = t;
+  el.className = 'notice ' + cls;
+  el.style.display = 'block';
+
+  clearTimeout(window.__n);
+  window.__n = setTimeout(()=>N(''), 2600);
+}
+
+/* =========================
+   ✅ GUARD
+========================= */
+(function guard(){
+  const s = sess();
+  if(!s || !s.username){
+    location.href='login.html';
+    return;
+  }
+  // αν δεν είναι admin, θα το δείξει το render() στο guard box
+})();
 
 /* =========================
    META
@@ -59,11 +91,11 @@ function setMeta(cid,patch){
     startedAt:null,
     matchesLocked:false,
     resultsLocked:false,
-    roundClosed:false,          // (μένει για συμβατότητα, δεν το χρησιμοποιούμε πλέον)
+    roundClosed:false,
     eligibleUsers:[],
-    lastScoredRound:0,          // ✅ για να μην ξαναπροσθέσει βαθμούς στο ίδιο round
-    finalWeek:false,            // ✅ Final Week flag
-    finalWinner:null,           // ✅ used by leaderboard silent lottery
+    lastScoredRound:0,
+    finalWeek:false,
+    finalWinner:null,
     finalWinnerAt:null
   };
   all[cid]={...all[cid],...patch};
@@ -99,10 +131,7 @@ function deadlineMsFromMatches(arr){
 }
 
 function deadlinePassed(){
-  // Μην κλειδώνεις όσο ο admin χτίζει τη λίστα αγώνων
   if (!Array.isArray(matches) || matches.length === 0) return false;
-
-  // Αν υπάρχει αγώνας χωρίς ώρα/ημερομηνία, μην κλειδώνεις
   if (matches.some(m => !m || !m.startISO)) return false;
 
   const dl = deadlineMsFromMatches(matches);
@@ -112,12 +141,14 @@ function deadlinePassed(){
 }
 
 function nid(){return Math.random().toString(36).slice(2,7).toUpperCase();}
-function ensure(){ if(!active){T('Δεν υπάρχει ενεργός διαγωνισμός.');return false;} return true; }
+function ensure(){
+  if(!active){ N('Δεν υπάρχει ενεργός διαγωνισμός.','err'); return false; }
+  return true;
+}
 
 /* =========================
    RESET / NEW CONTEST
 ========================= */
-// RESET contest data (users ΔΕΝ σβήνονται)
 function resetContestDataAll(){
   W(K.ST,{});
   W(K.SB,{});
@@ -127,7 +158,7 @@ function resetContestDataAll(){
   W(K.M,[]);
   W(K.RL,{});
   W(K.LOCK,{});
-  W(K.TIE,{}); // ✅ reset tie stats
+  W(K.TIE,{});
 }
 
 function newContest(){
@@ -141,6 +172,7 @@ function newContest(){
   matches=[];
   W(K.A,active);
   W(K.M,matches);
+
   setMeta(id,{
     round:1,
     matchesLocked:false,
@@ -155,7 +187,8 @@ function newContest(){
     finalWinner:null,
     finalWinnerAt:null
   });
-  T('✅ Νέος διαγωνισμός: '+id);
+
+  N('✅ Νέος διαγωνισμός: '+id,'ok');
   render();
 }
 
@@ -166,18 +199,18 @@ function toggleContestStart(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.contestStarted) return T('✅ Ο διαγωνισμός είναι ήδη ΕΝΕΡΓΟΣ.');
+  if(mta.contestStarted) return N('✅ Ο διαγωνισμός είναι ήδη ΕΝΕΡΓΟΣ.','ok');
+
   if(!confirm('Κλείδωμα διαγωνισμού (έναρξη); Θα κλειδώσει βραβείο + λήξη.'))return;
   if(!confirm('ΣΙΓΟΥΡΑ;'))return;
 
-  // snapshot eligible users (όσοι υπάρχουν ήδη σαν accounts)
   const usersArr=R(K.U,[]);
   const eligible = Array.isArray(usersArr)
     ? usersArr.map(u=>String(u.username||'').trim()).filter(Boolean)
     : [];
 
   setMeta(cid,{contestStarted:true,startedAt:now(),eligibleUsers:eligible});
-  T('✅ Ο διαγωνισμός έγινε ΕΝΕΡΓΟΣ.');
+  N('✅ Ο διαγωνισμός έγινε ΕΝΕΡΓΟΣ.','ok');
   render();
 }
 
@@ -188,10 +221,13 @@ function toggleMatchesLock(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.resultsLocked) return T('🔒 Κλειδωμένα τελικά. Δεν αλλάζει η λίστα.');
-  if(deadlinePassed()) return T('⛔ Πέρασε το deadline. Δεν αλλάζεις λίστα/ώρα/ομάδες.');
-  setMeta(cid,{matchesLocked:!mta.matchesLocked});
-  T(mta.matchesLocked?'🔓 Ξεκλείδωσαν οι αγώνες.':'🔒 Κλείδωσαν οι αγώνες.');
+
+  if(mta.resultsLocked) return N('🔒 Κλειδωμένα τελικά. Δεν αλλάζει η λίστα.','err');
+  if(deadlinePassed()) return N('⛔ Πέρασε το deadline. Δεν αλλάζεις λίστα/ώρα/ομάδες.','err');
+
+  const next = !mta.matchesLocked;
+  setMeta(cid,{matchesLocked: next});
+  N(next ? '🔒 Κλείδωσαν οι αγώνες.' : '🔓 Ξεκλείδωσαν οι αγώνες.','ok');
   render();
 }
 
@@ -199,16 +235,16 @@ function addMatch(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.resultsLocked) return T('🔒 Κλειδωμένα τελικά. Δεν αλλάζεις.');
-  if(deadlinePassed()) return T('⛔ Πέρασε το deadline. Δεν αλλάζεις λίστα.');
-  if(mta.matchesLocked) return T('🔒 Αγώνες κλειδωμένοι. Ξεκλείδωσε.');
-  if(matches.length>=10) return T('Max 10');
+  if(mta.resultsLocked) return N('🔒 Κλειδωμένα τελικά. Δεν αλλάζεις.','err');
+  if(deadlinePassed()) return N('⛔ Πέρασε το deadline. Δεν αλλάζεις λίστα.','err');
+  if(mta.matchesLocked) return N('🔒 Αγώνες κλειδωμένοι. Ξεκλείδωσε.','err');
+  if(matches.length>=10) return N('Max 10','err');
 
   const d=$('d').value,
         t=$('t').value,
         h=$('h').value.trim(),
         a=$('a').value.trim();
-  if(!d||!t||!h||!a) return T('Συμπλήρωσε όλα τα στοιχεία.');
+  if(!d||!t||!h||!a) return N('Συμπλήρωσε όλα τα στοιχεία.','warn');
 
   const id='m_'+Date.now()+'_'+Math.floor(Math.random()*9999);
   matches.push({
@@ -224,17 +260,15 @@ function addMatch(){
   });
   W(K.M,matches);
   $('h').value='';$('a').value='';
-  T('✅ Added');
+  N('✅ Added','ok');
   render();
 }
 
-/* ✅ OFF επιτρέπεται πάντα (ακόμη κι αν πέρασε deadline ή είναι matchesLocked),
-   ΜΟΝΟ απαγορεύεται όταν resultsLocked=true. */
 function toggleOff(mid){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.resultsLocked) return T('🔒 Κλειδωμένα τελικά. Δεν αλλάζει OFF.');
+  if(mta.resultsLocked) return N('🔒 Κλειδωμένα τελικά. Δεν αλλάζει OFF.','err');
 
   const m=matches.find(x=>x.id===mid); if(!m) return;
   m.off=!m.off;
@@ -247,25 +281,21 @@ function saveRes(mid){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.resultsLocked) return T('🔒 Κλειδωμένα τελικά.');
+  if(mta.resultsLocked) return N('🔒 Κλειδωμένα τελικά.','err');
   const m=matches.find(x=>x.id===mid); if(!m) return;
-  if(m.off) return T('OFF δεν παίρνει τελικό.');
+  if(m.off) return N('OFF δεν παίρνει τελικό.','warn');
 
   const v=($('res_'+mid)?.value||'').trim();
-  if(!v) return T('Διάλεξε 1/X/2');
+  if(!v) return N('Διάλεξε 1/X/2','warn');
 
   m.result=v;
   W(K.M,matches);
-  T('✅ Saved τελικό');
+  N('✅ Saved τελικό','ok');
   render();
 }
 
 /* =========================
    SCORING
-   - ON: μόνο όταν υπάρχει τελικό
-   - HELP: +1 (σαν σωστό)
-   - OFF: αν είχε HELP -> +1
-   - BONUS +2: αν σε ΟΛΟΥΣ τους αγώνες που έχουν αποτέλεσμα (ON) είσαι ok (HELP=ok)
 ========================= */
 function computeWeekScores(){
   const cid=active?.id;
@@ -284,12 +314,10 @@ function computeWeekScores(){
       const pick=(map?.[m.id]?.pick||'').trim();
 
       if(m.off){
-        // OFF: αν είχε HELP παίρνει +1
         if(pick==='HELP') pts+=1;
         continue;
       }
 
-      // ON: μετράει μόνο όταν υπάρχει τελικό
       if(!m.result) continue;
 
       req++;
@@ -297,7 +325,6 @@ function computeWeekScores(){
       if(pick && pick===m.result){ pts+=1; ok++; }
     }
 
-    // bonus +2 αν στα παιχνίδια που είχαν αποτέλεσμα, τα πέτυχες όλα (HELP μετράει σαν σωστό)
     if(req>0 && ok===req) pts+=2;
 
     perWeek[u]=pts;
@@ -306,7 +333,6 @@ function computeWeekScores(){
   return perWeek;
 }
 
-/* ✅ NEW: compute per-user week stats for Final Week tie-breaks */
 function computeWeekStatsForTieBreaks(){
   const cid=active?.id;
   if(!cid) return {};
@@ -323,7 +349,7 @@ function computeWeekStatsForTieBreaks(){
     for(const m of matches){
       const pick=(map?.[m.id]?.pick||'').trim();
 
-      if(m.off) continue;            // tie-breaks based on ON matches with results
+      if(m.off) continue;
       const res=(m.result||'').trim();
       if(!res) continue;
 
@@ -333,7 +359,7 @@ function computeWeekStatsForTieBreaks(){
     }
 
     const bonusHit = (req>0 && ok===req);
-    const nearPerfect = (req>1 && ok===req-1); // ακριβώς 1 λάθος
+    const nearPerfect = (req>1 && ok===req-1);
 
     out[u]={ req, ok, bonusHit, nearPerfect };
   }
@@ -361,15 +387,7 @@ function addWeekScoresToContest(perWeek){
 
 function rebuildTotalsFromBy(){
   const by=R(K.SB,{});
-  const total={};
-  for(const cc of Object.keys(by||{})){
-    const b=by[cc]||{};
-    for(const u of Object.keys(b||{})){
-      total[u]=(Number(total[u])||0)+(Number(total[u])||0) - (Number(total[u])||0) + (Number(total[u])||0); // dummy keep
-    }
-  }
 
-  // σωστό rebuild
   const total2={};
   for(const cc of Object.keys(by||{})){
     const b=by[cc]||{};
@@ -381,24 +399,13 @@ function rebuildTotalsFromBy(){
   W(K.ST,total2);
 }
 
-/* (Προαιρετικό κουμπί) Χειροκίνητη ανανέωση totals */
 function calculateScores(){
   rebuildTotalsFromBy();
-  T('✅ Totals refreshed');
+  N('✅ Totals refreshed','ok');
 }
+
 /* =========================
-   ✅ NEW: tieStatsByContest storage + update
-   structure:
-   tieStatsByContest = {
-     [cid]: {
-       [username]: {
-         bonusCount,
-         bonusStreakCur,
-         bonusStreakMax,
-         nearPerfectCount
-       }
-     }
-   }
+   TIE STATS
 ========================= */
 function tieAll(){
   const t=R(K.TIE,{});
@@ -449,7 +456,7 @@ function updateTieStatsAfterWeek(weekStats){
 }
 
 /* =========================
-   ✅ FINAL WEEK TOGGLE
+   FINAL WEEK TOGGLE
 ========================= */
 function toggleFinalWeek(){
   if(!ensure())return;
@@ -463,28 +470,25 @@ function toggleFinalWeek(){
 
   setMeta(cid,{finalWeek: !cur, finalWinner:null, finalWinnerAt:null});
 
-  T(!cur ? '🏁 Final Week: ΕΝΕΡΓΟ' : '🏁 Final Week: ΑΝΕΝΕΡΓΟ');
+  N(!cur ? '🏁 Final Week: ΕΝΕΡΓΟ' : '🏁 Final Week: ΑΝΕΝΕΡΓΟ','ok');
   render();
 }
 
 /* =========================
-   ✅ LOCK FINAL RESULTS
-   - locks results
-   - adds week scores to totals
-   - updates tie stats
+   LOCK FINAL RESULTS
 ========================= */
 function lockFinalResults(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.resultsLocked) return T('✅ Τα τελικά είναι ήδη κλειδωμένα.');
+  if(mta.resultsLocked) return N('✅ Τα τελικά είναι ήδη κλειδωμένα.','ok');
 
   const need=matches.filter(x=>!x.off).filter(x=>!x.result);
-  if(need.length) return T('⛔ Λείπουν τελικά σε ON αγώνες.');
+  if(need.length) return N('⛔ Λείπουν τελικά σε ON αγώνες.','err');
 
   const roundNow=Number(mta.round||1);
   if(Number(mta.lastScoredRound||0) === roundNow){
-    return T('⛔ Οι βαθμοί για αυτή την αγωνιστική έχουν ήδη προστεθεί.');
+    return N('⛔ Οι βαθμοί για αυτή την αγωνιστική έχουν ήδη προστεθεί.','err');
   }
 
   if(!confirm('Θες να τα ελέγξεις ξανά;')) return;
@@ -500,12 +504,12 @@ function lockFinalResults(){
 
   setMeta(cid,{lastScoredRound:roundNow, finalWinner:null, finalWinnerAt:null});
 
-  T('🔒 Τελικά κλειδώθηκαν & οι βαθμοί ΠΡΟΣΤΕΘΗΚΑΝ στη συνολική βαθμολογία');
+  N('🔒 Τελικά κλειδώθηκαν & οι βαθμοί ΠΡΟΣΤΕΘΗΚΑΝ στη συνολική βαθμολογία','ok');
   render();
 }
 
 /* =========================
-   ✅ NEXT ROUND
+   NEXT ROUND
 ========================= */
 function nextRound(){
   if(!ensure())return;
@@ -513,7 +517,7 @@ function nextRound(){
   const mta=getMeta(cid)||setMeta(cid,{});
 
   if(!mta.resultsLocked){
-    return T('⛔ Πρώτα «Κλείδωμα Τελικών» για να μπουν οι βαθμοί της αγωνιστικής.');
+    return N('⛔ Πρώτα «Κλείδωμα Τελικών» για να μπουν οι βαθμοί της αγωνιστικής.','err');
   }
 
   if(!confirm('➡️ Επόμενη αγωνιστική; Θα διαγραφούν ΟΛΟΙ οι αγώνες από τη λίστα.')) return;
@@ -537,7 +541,7 @@ function nextRound(){
   if(locks && locks[cid]) delete locks[cid];
   W(K.LOCK,locks);
 
-  T('✅ Έγινε! Άδειασε η λίστα αγώνων — τώρα βάλε νέους αγώνες για Γύρο '+newRound);
+  N('✅ Έγινε! Άδειασε η λίστα αγώνων — τώρα βάλε νέους αγώνες για Γύρο '+newRound,'ok');
   render();
 }
 
@@ -621,23 +625,23 @@ function savePrize(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.contestStarted) return T('🔒 Κλειδωμένο (έχει ξεκινήσει)');
+  if(mta.contestStarted) return N('🔒 Κλειδωμένο (έχει ξεκινήσει)','err');
 
   const txt=$('pz').value.trim();
-  if(!txt) return T('Γράψε βραβείο');
+  if(!txt) return N('Γράψε βραβείο','warn');
 
   setMeta(cid,{prizeText:txt});
-  T('✅ Saved prize');
+  N('✅ Saved prize','ok');
   renderPrize();
 }
 function clearPrize(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.contestStarted) return T('🔒 Κλειδωμένο (έχει ξεκινήσει)');
+  if(mta.contestStarted) return N('🔒 Κλειδωμένο (έχει ξεκινήσει)','err');
 
   setMeta(cid,{prizeText:''});
-  T('🧽 Cleared prize');
+  N('🧽 Cleared prize','ok');
   renderPrize();
 }
 
@@ -645,23 +649,23 @@ function saveEnds(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.contestStarted) return T('🔒 Κλειδωμένο (έχει ξεκινήσει)');
+  if(mta.contestStarted) return N('🔒 Κλειδωμένο (έχει ξεκινήσει)','err');
 
   const v=$('end').value.trim();
-  if(!v) return T('Βάλε ημερομηνία');
+  if(!v) return N('Βάλε ημερομηνία','warn');
 
   setMeta(cid,{contestEndsAtISO:v+'T00:00:00'});
-  T('✅ Saved end date');
+  N('✅ Saved end date','ok');
   renderPrize();
 }
 function clearEnds(){
   if(!ensure())return;
   const cid=active.id;
   const mta=getMeta(cid)||setMeta(cid,{});
-  if(mta.contestStarted) return T('🔒 Κλειδωμένο (έχει ξεκινήσει)');
+  if(mta.contestStarted) return N('🔒 Κλειδωμένο (έχει ξεκινήσει)','err');
 
   setMeta(cid,{contestEndsAtISO:null});
-  T('🧽 Cleared end date');
+  N('🧽 Cleared end date','ok');
   renderPrize();
 }
 
@@ -734,14 +738,14 @@ function renderNextStart(){
 }
 function saveNextStart(){
   const v=String($('nextStart')?.value||'').trim();
-  if(!v) return T('Βάλε ημερομηνία ή πάτα Clear');
+  if(!v) return N('Βάλε ημερομηνία ή πάτα Clear','warn');
   setNextStartISO(v);
-  T('✅ Αποθηκεύτηκε η ημερομηνία έναρξης');
+  N('✅ Αποθηκεύτηκε η ημερομηνία έναρξης','ok');
   renderNextStart();
 }
 function clearNextStart(){
   setNextStartISO('');
-  T('🧽 Καθαρίστηκε η ημερομηνία έναρξης');
+  N('🧽 Καθαρίστηκε η ημερομηνία έναρξης','ok');
   renderNextStart();
 }
 
@@ -811,7 +815,6 @@ function render(){
     $('nx').className='btn a';
     $('nx').textContent = '➡️ Επόμενη αγωνιστική';
 
-    // ✅ FINAL WEEK BUTTON UI
     const fw = (mta.finalWeek===true);
     const b = $('finalWeekBtn');
     if(b){
@@ -832,7 +835,7 @@ function render(){
     if(b){
       b.textContent='🏁 Final Week: -';
       b.className='btn';
-      b.onclick=()=>T('⛔ Δεν υπάρχει contest');
+      b.onclick=()=>N('⛔ Δεν υπάρχει contest','err');
     }
   }
 
@@ -856,8 +859,6 @@ $('es').onclick=saveEnds;
 $('ec').onclick=clearEnds;
 $('sc').onclick=calculateScores;
 $('lockResultsBtn').onclick=lockFinalResults;
-
-// ✅ ΕΔΩ: αντί closeNext -> nextRound
 $('nx').onclick=nextRound;
 
 $('ab').onclick=activeUsersByContest;
