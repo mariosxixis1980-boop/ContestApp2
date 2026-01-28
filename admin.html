@@ -208,5 +208,23 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
 </div>
 
 <script src="admin.js"></script>
+  <script type="module">
+import { supabase } from "./supabase.js";
+
+// 🔒 PROTECT ADMIN
+const { data: { session } } = await supabase.auth.getSession();
+
+if (!session) {
+  location.replace("login.html");
+}
+
+// email admin (βάζεις ΤΟ ΔΙΚΟ ΣΟΥ)
+const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+
+if (session.user.email !== ADMIN_EMAIL) {
+  location.replace("login.html");
+}
+</script>
+
 </body>
 </html>
