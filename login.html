@@ -370,9 +370,18 @@ document.addEventListener("DOMContentLoaded", () => {
     showLogin();
     renderNextContest();
 
-  }catch (err) {
+   }catch (err) {
     console.error("JS ERROR:", err);
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      `<div style="position:fixed;top:12px;left:12px;right:12px;z-index:99999;
+        background:rgba(231,76,60,.18);border:1px solid rgba(231,76,60,.55);
+        color:#ffd3d3;padding:10px 12px;border-radius:14px;font-weight:900">
+        JS ERROR: ${String(err && err.message ? err.message : err)}
+      </div>`
+    );
   }
+
 });
 </script>
 </body>
