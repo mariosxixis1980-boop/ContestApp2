@@ -1,2 +1,0 @@
-
-Disable service worker
