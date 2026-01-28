@@ -63,18 +63,6 @@
     .tabs{display:flex;gap:10px;margin-top:12px}
     .tab{flex:1}
     .hide{display:none}
-
-    /* ✅ 
-    {
-      display:none;
-      position:fixed;
-      bottom:20px;
-      left:50%;
-      transform:translateX(-50%);
-      z-index:9999;
-      max-width:min(520px, calc(100% - 24px));
-      text-align:center;
-    }
   </style>
 </head>
 
@@ -115,9 +103,8 @@
       <div class="row">
         <button class="btn g" id="loginBtn" type="button">✅ Login</button>
         <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
-       <div id="loginErr" class="mini" style="color:#ffb3b3;display:none"></div>
+        <div id="loginErr" class="mini" style="color:#ffb3b3;display:none"></div>
       </div>
-     
 
       <div class="mini">Tip: Αν βλέπεις “κωδικό μόνος του”, είναι autofill του Chrome.</div>
     </div>
@@ -137,7 +124,6 @@
         <button class="btn g" id="regBtn" type="button">🆕 Δημιουργία</button>
         <button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
         <div id="regErr" class="mini" style="color:#ffb3b3;display:none"></div>
-
       </div>
 
       <div class="mini">Αν αφήσεις το email κενό, η εγγραφή γίνεται κανονικά.</div>
@@ -154,7 +140,6 @@
       <a href="rules.html" target="_blank" style="color:#eaf1ff;text-decoration:underline;">Κανόνες Παιχνιδιού</a>.
     </p>
   </div>
-
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -177,6 +162,23 @@ document.addEventListener("DOMContentLoaded", () => {
     function normUser(u){ return norm(u).toLowerCase(); }
     function isValidEmail(email){
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function setInlineMsg(id, msg){
+      const el = $(id);
+      if(!el) return;
+      const text = String(msg || '').trim();
+      if(text){
+        el.textContent = text;
+        el.style.display = 'block';
+      }else{
+        el.textContent = '';
+        el.style.display = 'none';
+      }
+    }
+    function clearMsgs(){
+      setInlineMsg('loginErr','');
+      setInlineMsg('regErr','');
     }
 
     /* =========================
@@ -243,12 +245,14 @@ document.addEventListener("DOMContentLoaded", () => {
        UI TABS
     ========================= */
     function showLogin(){
+      clearMsgs();
       $('loginBox').classList.remove('hide');
       $('registerBox').classList.add('hide');
       $('tabLogin').className = 'btn a tab';
       $('tabRegister').className = 'btn tab';
     }
     function showRegister(){
+      clearMsgs();
       $('registerBox').classList.remove('hide');
       $('loginBox').classList.add('hide');
       $('tabRegister').className = 'btn a tab';
@@ -259,39 +263,54 @@ document.addEventListener("DOMContentLoaded", () => {
        ACTIONS
     ========================= */
     function doLogin(){
+      setInlineMsg('loginErr','');
+
       const username = norm($('loginUser').value);
       const password = String($('loginPass').value || '');
 
-      if(!username || !password) return
+      if(!username || !password){
+        return setInlineMsg('loginErr','Γράψε username και password.');
+      }
+
       if(isAdminCredentials(username, password)){
         setSession({ username: normUser(username), isAdmin: true });
-        ('✅ Admin login');
         return setTimeout(()=> location.href='admin.html', 200);
       }
 
       const u = findUser(username);
-      if(!u) return 
-      if(String(u.password) !== password) return 
+      if(!u){
+        return setInlineMsg('loginErr','Δεν βρέθηκε χρήστης με αυτό το username.');
+      }
+
+      if(String(u.password) !== password){
+        return setInlineMsg('loginErr','Λάθος password. Δοκίμασε ξανά.');
+      }
 
       setSession({ username: u.username, isAdmin: !!u.isAdmin });
-     ('✅ Login');
       setTimeout(()=> location.href='dashboard.html', 200);
     }
 
     function doRegister(){
+      setInlineMsg('regErr','');
+
       const username = norm($('regUser').value);
       const password = String($('regPass').value || '');
       const emailRaw = norm($('regEmail').value).toLowerCase();
 
-      if(!username || !password) return
-      if(findUser(username)) return 
+      if(!username || !password){
+        return setInlineMsg('regErr','Βάλε username και password για εγγραφή.');
+      }
+
+      if(findUser(username)){
+        return setInlineMsg('regErr','Αυτό το username είναι ήδη χρησιμοποιημένο.');
+      }
 
       if(emailRaw !== '' && !isValidEmail(emailRaw)){
-        return
+        return setInlineMsg('regErr','Το email δεν είναι έγκυρο.');
       }
 
       if(normUser(username) === 'marios'){
-        return
+        return setInlineMsg('regErr','Το username "marios" είναι δεσμευμένο για τον admin.');
       }
 
       const user = {
@@ -303,22 +322,35 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       upsertUser(user);
+
+      // Μετά την εγγραφή → πήγαινε Login & βάλε το username έτοιμο
       showLogin();
       $('loginUser').value = user.username;
       $('loginPass').value = '';
+      setInlineMsg('loginErr','✅ Έγινε εγγραφή! Τώρα κάνε login.');
     }
-    function clearLoginInputs(){
-  $('loginUser').value = '';
-  $('loginPass').value = '';
-}
 
+    function clearLoginInputs(){
+      $('loginUser').value = '';
+      $('loginPass').value = '';
+      setInlineMsg('loginErr','');
+    }
+
+    function clearRegisterInputs(){
+      $('regUser').value = '';
+      $('regPass').value = '';
+      $('regEmail').value = '';
+      setInlineMsg('regErr','');
+    }
 
     /* =========================
        BIND EVENTS (με έλεγχο)
     ========================= */
     const requiredIds = [
       'tabLogin','tabRegister','loginBtn','clearBtn','regBtn','regClearBtn',
-      'loginBox','registerBox','nextText','nextSub','loginUser','loginPass','regUser','regPass','regEmail'
+      'loginBox','registerBox','nextText','nextSub',
+      'loginUser','loginPass','regUser','regPass','regEmail',
+      'loginErr','regErr'
     ];
     for(const id of requiredIds){
       if(!$(id)) throw new Error("Missing element id: " + id);
@@ -338,12 +370,9 @@ document.addEventListener("DOMContentLoaded", () => {
     showLogin();
     renderNextContest();
 
-    // ✅ αυτό θα εμφανιστεί ΜΟΝΟ αν τρέχει το JS σωστά
-  
   }catch (err) {
-  console.error("JS ERROR:", err);
-}
-
+    console.error("JS ERROR:", err);
+  }
 });
 </script>
 </body>
