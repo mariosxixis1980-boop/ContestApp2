@@ -4,6 +4,10 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Cyprus Match Predict</title>
+
+  <!-- προαιρετικό: για να μην βγάζει 404 favicon -->
+  <link rel="icon" href="icon-192.png" />
+
   <style>
     :root{
       --bg:#070b13;--b:rgba(255,255,255,.12);
@@ -36,6 +40,7 @@
       border:1px solid var(--b);background:rgba(255,255,255,.06);color:var(--t);
       padding:10px 12px;border-radius:14px;font-weight:900;cursor:pointer;
       text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      user-select:none;
     }
     .g{background:var(--g);border-color:var(--gb)}
     .a{background:var(--a);border-color:var(--ab)}
@@ -95,9 +100,9 @@
       <div class="row">
         <button class="btn g" id="loginBtn" type="button">✅ Login</button>
         <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
-        <div id="loginErr" class="mini" style="color:#ffb3b3;display:none"></div>
       </div>
 
+      <div id="loginErr" class="mini" style="color:#ffb3b3;display:none"></div>
       <div class="mini">Tip: Αν βλέπεις “κωδικό μόνος του”, είναι autofill του Chrome.</div>
     </div>
 
@@ -115,9 +120,9 @@
       <div class="row">
         <button class="btn g" id="regBtn" type="button">🆕 Δημιουργία</button>
         <button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
-        <div id="regErr" class="mini" style="color:#ffb3b3;display:none"></div>
       </div>
 
+      <div id="regErr" class="mini" style="color:#ffb3b3;display:none"></div>
       <div class="mini">Θα σου έρθει email επιβεβαίωσης αν είναι ανοικτό στο Supabase Auth settings.</div>
     </div>
 
@@ -133,172 +138,150 @@
     </p>
   </div>
 
-  <!-- ✅ ΜΟΝΟ ΕΝΑ SCRIPT (MODULE) -->
   <script type="module">
     import { supabase } from "./supabase.js";
 
+    // 🔒 ΒΑΛΕ ΕΔΩ ΤΟ ADMIN EMAIL ΣΟΥ
+    const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+    const KEY_NEXT = "nextContestStartISO";
+
+    const byId = (id) => document.getElementById(id);
+
+    function setInlineMsg(id, msg){
+      const el = byId(id);
+      const text = String(msg || "").trim();
+      if(!el) return;
+      if(text){
+        el.textContent = text;
+        el.style.display = "block";
+      }else{
+        el.textContent = "";
+        el.style.display = "none";
+      }
+    }
+    function clearMsgs(){
+      setInlineMsg("loginErr","");
+      setInlineMsg("regErr","");
+    }
+
+    function fmtDateGreek(isoDate){
+      const s = String(isoDate||"").trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      const [yy,mm,dd] = s.split("-");
+      return `${dd}/${mm}/${yy}`;
+    }
+
+    function renderNextContest(){
+      const raw = String(localStorage.getItem(KEY_NEXT) || "");
+      const iso = raw.replace(/"/g,"").trim();
+      const pretty = fmtDateGreek(iso);
+
+      if(pretty){
+        byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
+        byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
+      }else{
+        byId("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
+        byId("nextSub").textContent = "Ο admin θα βάλει ημερομηνία από το Admin Panel.";
+      }
+    }
+
+    function showLogin(){
+      clearMsgs();
+      byId("loginBox").classList.remove("hide");
+      byId("registerBox").classList.add("hide");
+      byId("tabLogin").className = "btn a tab";
+      byId("tabRegister").className = "btn tab";
+    }
+    function showRegister(){
+      clearMsgs();
+      byId("registerBox").classList.remove("hide");
+      byId("loginBox").classList.add("hide");
+      byId("tabRegister").className = "btn a tab";
+      byId("tabLogin").className = "btn tab";
+    }
+
+    async function goAfterLogin(session){
+      const email = String(session?.user?.email || "");
+      if(email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
+        location.href = "admin.html";
+      }else{
+        location.href = "dashboard.html";
+      }
+    }
+
+    async function doLogin(){
+      clearMsgs();
+      const email = String(byId("loginEmail").value || "").trim().toLowerCase();
+      const password = String(byId("loginPass").value || "");
+
+      if(!email || !password){
+        return setInlineMsg("loginErr","Γράψε email και password.");
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if(error) return setInlineMsg("loginErr", `Login error: ${error.message}`);
+      if(!data?.session) return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
+
+      await goAfterLogin(data.session);
+    }
+
+    async function doRegister(){
+      clearMsgs();
+      const username = String(byId("regUser").value || "").trim();
+      const email = String(byId("regEmail").value || "").trim().toLowerCase();
+      const password = String(byId("regPass").value || "");
+
+      if(!email || !password){
+        return setInlineMsg("regErr","Βάλε email και password για εγγραφή.");
+      }
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if(error) return setInlineMsg("regErr", `Register error: ${error.message}`);
+
+      const userId = data?.user?.id;
+
+      // προαιρετικό profiles upsert
+      if(userId){
+        const payload = { id: userId, username: username || null, email };
+        const { error: pErr } = await supabase
+          .from("profiles")
+          .upsert(payload, { onConflict: "id" });
+
+        if(pErr) console.warn("profiles upsert error:", pErr);
+      }
+
+      showLogin();
+      byId("loginEmail").value = email;
+      byId("loginPass").value = "";
+      setInlineMsg("loginErr","✅ Έγινε εγγραφή! Τώρα κάνε login. (Ίσως χρειάζεται email confirm ανάλογα τις ρυθμίσεις σου.)");
+    }
+
+    function clearLoginInputs(){
+      byId("loginEmail").value = "";
+      byId("loginPass").value = "";
+      setInlineMsg("loginErr","");
+    }
+    function clearRegisterInputs(){
+      byId("regUser").value = "";
+      byId("regEmail").value = "";
+      byId("regPass").value = "";
+      setInlineMsg("regErr","");
+    }
+
+    // BIND (κουμπιά)
+    byId("tabLogin").addEventListener("click", showLogin);
+    byId("tabRegister").addEventListener("click", showRegister);
+    byId("loginBtn").addEventListener("click", doLogin);
+    byId("clearBtn").addEventListener("click", clearLoginInputs);
+    byId("regBtn").addEventListener("click", doRegister);
+    byId("regClearBtn").addEventListener("click", clearRegisterInputs);
+
+    // INIT
     (async () => {
-      try {
-        // 🔒 ΒΑΛΕ ΕΔΩ ΤΟ ADMIN EMAIL ΣΟΥ (αυτό που θες να μπαίνει στο admin.html)
-        const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-        const KEY_NEXT = "nextContestStartISO";
+      try{
+        const { data: sessData, error } = await supabase.auth.getSession();
+        if(error) console.warn("getSession error:", error);
 
-        const $ = (id) => document.getElementById(id);
-
-        // Αν λείπει κάτι, να το δείξει καθαρά (και να μην "πεθάνει" σιωπηλά)
-        const requiredIds = [
-          "tabLogin","tabRegister","loginBtn","clearBtn","regBtn","regClearBtn",
-          "loginBox","registerBox","nextText","nextSub",
-          "loginEmail","loginPass","regUser","regEmail","regPass",
-          "loginErr","regErr"
-        ];
-        for (const id of requiredIds) {
-          if (!$(id)) throw new Error("Missing element id: " + id);
-        }
-
-        function setInlineMsg(id, msg){
-          const el = $(id);
-          if(!el) return;
-          const text = String(msg || "").trim();
-          if(text){
-            el.textContent = text;
-            el.style.display = "block";
-          }else{
-            el.textContent = "";
-            el.style.display = "none";
-          }
-        }
-        function clearMsgs(){
-          setInlineMsg("loginErr","");
-          setInlineMsg("regErr","");
-        }
-
-        function fmtDateGreek(isoDate){
-          const s = String(isoDate||"").trim();
-          if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-          const [yy,mm,dd] = s.split("-");
-          return `${dd}/${mm}/${yy}`;
-        }
-
-        function renderNextContest(){
-          // πιο safe από replaceAll
-          const raw = String(localStorage.getItem(KEY_NEXT) || "");
-          const iso = raw.replace(/"/g, "").trim();
-          const pretty = fmtDateGreek(iso);
-
-          if(pretty){
-            $("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
-            $("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
-          }else{
-            $("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
-            $("nextSub").textContent = "Ο admin θα βάλει ημερομηνία από το Admin Panel.";
-          }
-        }
-
-        function showLogin(){
-          clearMsgs();
-          $("loginBox").classList.remove("hide");
-          $("registerBox").classList.add("hide");
-          $("tabLogin").className = "btn a tab";
-          $("tabRegister").className = "btn tab";
-        }
-        function showRegister(){
-          clearMsgs();
-          $("registerBox").classList.remove("hide");
-          $("loginBox").classList.add("hide");
-          $("tabRegister").className = "btn a tab";
-          $("tabLogin").className = "btn tab";
-        }
-
-        async function goAfterLogin(session){
-          const email = session?.user?.email || "";
-          if(email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
-            location.href = "admin.html";
-          }else{
-            location.href = "dashboard.html";
-          }
-        }
-
-        async function doLogin(){
-          clearMsgs();
-
-          const email = String($("loginEmail").value || "").trim().toLowerCase();
-          const password = String($("loginPass").value || "");
-
-          if(!email || !password){
-            return setInlineMsg("loginErr","Γράψε email και password.");
-          }
-
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if(error){
-            return setInlineMsg("loginErr", `Login error: ${error.message}`);
-          }
-
-          if(!data?.session){
-            return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
-          }
-
-          await goAfterLogin(data.session);
-        }
-
-        async function doRegister(){
-          clearMsgs();
-
-          const username = String($("regUser").value || "").trim();
-          const email = String($("regEmail").value || "").trim().toLowerCase();
-          const password = String($("regPass").value || "");
-
-          if(!email || !password){
-            return setInlineMsg("regErr","Βάλε email και password για εγγραφή.");
-          }
-
-          const { data, error } = await supabase.auth.signUp({ email, password });
-          if(error){
-            return setInlineMsg("regErr", `Register error: ${error.message}`);
-          }
-
-          const userId = data?.user?.id;
-
-          // Προσπάθεια να γραφτεί profiles (αν έχεις RLS/policies μπορεί να το κόψει - δεν χαλάει το signup)
-          if(userId){
-            const payload = { id: userId, username: username || null, email };
-            const { error: pErr } = await supabase
-              .from("profiles")
-              .upsert(payload, { onConflict: "id" });
-
-            if(pErr){
-              console.warn("profiles upsert error:", pErr);
-            }
-          }
-
-          showLogin();
-          $("loginEmail").value = email;
-          $("loginPass").value = "";
-          setInlineMsg("loginErr","✅ Έγινε εγγραφή! Τώρα κάνε login. (Ίσως χρειάζεται email confirm ανάλογα τις ρυθμίσεις σου.)");
-        }
-
-        function clearLoginInputs(){
-          $("loginEmail").value = "";
-          $("loginPass").value = "";
-          setInlineMsg("loginErr","");
-        }
-        function clearRegisterInputs(){
-          $("regUser").value = "";
-          $("regEmail").value = "";
-          $("regPass").value = "";
-          setInlineMsg("regErr","");
-        }
-
-        // BIND
-        $("tabLogin").addEventListener("click", showLogin);
-        $("tabRegister").addEventListener("click", showRegister);
-        $("loginBtn").addEventListener("click", doLogin);
-        $("clearBtn").addEventListener("click", clearLoginInputs);
-        $("regBtn").addEventListener("click", doRegister);
-        $("regClearBtn").addEventListener("click", clearRegisterInputs);
-
-        // INIT: αν υπάρχει session, redirect
-        const { data: sessData } = await supabase.auth.getSession();
         if(sessData?.session){
           await goAfterLogin(sessData.session);
           return;
@@ -307,29 +290,17 @@
         showLogin();
         renderNextContest();
 
-        // Auth state changes
         supabase.auth.onAuthStateChange((_event, session) => {
-          if(session){
-            goAfterLogin(session);
-          }
+          if(session) goAfterLogin(session);
         });
 
-        console.log("SUPABASE OK:", supabase);
-
-      } catch (err) {
+        console.log("SUPABASE OK");
+      }catch(err){
         console.error("JS ERROR:", err);
-        document.body.insertAdjacentHTML(
-          "afterbegin",
-          `<div style="position:fixed;top:12px;left:12px;right:12px;z-index:99999;
-            background:rgba(231,76,60,.18);border:1px solid rgba(231,76,60,.55);
-            color:#ffd3d3;padding:10px 12px;border-radius:14px;font-weight:900">
-            JS ERROR: ${String(err && err.message ? err.message : err)}
-          </div>`
-        );
+        setInlineMsg("loginErr", "JS ERROR: " + (err?.message || String(err)));
+        showLogin();
       }
     })();
   </script>
-
 </body>
 </html>
-
