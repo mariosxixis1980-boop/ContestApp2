@@ -417,7 +417,7 @@ function onSavePick(cid,u,mid){
 function render(){
   const s=sess();
   if(!s) return location.href='login.html';
-  if(s.isAdmin) return location.href='admin.html';
+ 
 
   $('userPill').textContent='Χρήστης: '+s.username;
 
