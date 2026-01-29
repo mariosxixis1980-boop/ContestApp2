@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Reset Password</title>
+  <style>
+    body{font-family:system-ui; background:#070b13; color:#eaf1ff; display:flex; min-height:100vh; align-items:center; justify-content:center; padding:18px;}
+    .card{width:min(520px,100%); border:1px solid rgba(255,255,255,.12); border-radius:18px; padding:16px; background:rgba(255,255,255,.06)}
+    input{width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25); color:#eaf1ff; font-weight:800;}
+    button{margin-top:10px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(46,204,113,.20); color:#eaf1ff; font-weight:900; cursor:pointer;}
+    .msg{margin-top:10px; color:#ffb3b3; font-weight:800;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔁 Νέος κωδικός</h2>
+    <p>Βάλε νέο password και πάτα “Αλλαγή”.</p>
+
+    <input id="newPass" type="password" placeholder="Νέο password" />
+    <button id="saveBtn">✅ Αλλαγή κωδικού</button>
+
+    <div id="msg" class="msg" style="display:none"></div>
+  </div>
+
+  <script type="module">
+    import { supabase } from "./supabase.js";
+    const msg = (t) => { const el=document.getElementById("msg"); el.textContent=t; el.style.display="block"; };
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      const password = String(document.getElementById("newPass").value || "");
+      if(!password) return msg("Γράψε νέο password.");
+
+      const { error } = await supabase.auth.updateUser({ password });
+      if(error) return msg("Error: " + error.message);
+
+      msg("✅ Έγινε! Πήγαινε login.");
+      setTimeout(()=> location.href="login.html", 900);
+    });
+  </script>
+</body>
+</html>
