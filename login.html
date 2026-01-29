@@ -140,7 +140,6 @@
 
     const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
     const KEY_NEXT = "nextContestStartISO";
-
     const byId = (id) => document.getElementById(id);
 
     function setInlineMsg(id, msg){
@@ -188,6 +187,7 @@
       byId("tabLogin").className = "btn a tab";
       byId("tabRegister").className = "btn tab";
     }
+
     function showRegister(){
       clearMsgs();
       byId("registerBox").classList.remove("hide");
@@ -195,30 +195,6 @@
       byId("tabRegister").className = "btn a tab";
       byId("tabLogin").className = "btn tab";
     }
-const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: location.origin + "/reset.html"
-});
-
-
-
-async function doResetPassword(){
-  clearMsgs();
-
-  const email = String(byId("loginEmail").value || "").trim().toLowerCase();
-  if(!email){
-    return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + "/reset.html"
-  });
-
-  if(error){
-    return setInlineMsg("loginErr", "Reset error: " + error.message);
-  }
-
-  setInlineMsg("loginErr", "✅ Σου έστειλα email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
-}
 
     async function goAfterLogin(session){
       const email = String(session?.user?.email || "");
@@ -233,10 +209,7 @@ async function doResetPassword(){
       clearMsgs();
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
       const password = String(byId("loginPass").value || "");
-
-      if(!email || !password){
-        return setInlineMsg("loginErr","Γράψε email και password.");
-      }
+      if(!email || !password) return setInlineMsg("loginErr","Γράψε email και password.");
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if(error) return setInlineMsg("loginErr", `Login error: ${error.message}`);
@@ -250,43 +223,35 @@ async function doResetPassword(){
       const username = String(byId("regUser").value || "").trim();
       const email = String(byId("regEmail").value || "").trim().toLowerCase();
       const password = String(byId("regPass").value || "");
-
-      if(!email || !password){
-        return setInlineMsg("regErr","Βάλε email και password για εγγραφή.");
-      }
+      if(!email || !password) return setInlineMsg("regErr","Βάλε email και password για εγγραφή.");
 
       const { data, error } = await supabase.auth.signUp({ email, password });
       if(error) return setInlineMsg("regErr", `Register error: ${error.message}`);
 
       const userId = data?.user?.id;
-
-      // Προαιρετικό: profiles upsert (αν έχεις RLS θα αποτύχει - δεν χαλάει το signup)
       if(userId){
         const payload = { id: userId, username: username || null, email };
-        const { error: pErr } = await supabase
-          .from("profiles")
-          .upsert(payload, { onConflict: "id" });
-
+        const { error: pErr } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
         if(pErr) console.warn("profiles upsert error:", pErr);
       }
 
       showLogin();
       byId("loginEmail").value = email;
       byId("loginPass").value = "";
-      setInlineMsg("loginErr","✅ Έγινε εγγραφή! Τώρα κάνε login. (Ίσως χρειάζεται email confirm ανάλογα τις ρυθμίσεις σου.)");
+      setInlineMsg("loginErr","✅ Έγινε εγγραφή! Τώρα κάνε login. (Ίσως χρειάζεται email confirm.)");
     }
 
-    async function doReset(){
+    async function doResetPassword(){
       clearMsgs();
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
-      if(!email) return setInlineMsg("loginErr","Γράψε πρώτα το email σου και πάτα Reset.");
+      if(!email) return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
 
-      const redirectTo = location.origin + location.pathname.replace("login.html","") + "reset.html";
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: location.origin + "/reset.html"
+      });
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-      if(error) return setInlineMsg("loginErr","Reset error: " + error.message);
-
-      setInlineMsg("loginErr","✅ Στάλθηκε email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
+      if(error) return setInlineMsg("loginErr", "Reset error: " + error.message);
+      setInlineMsg("loginErr", "✅ Σου έστειλα email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
     }
 
     function clearLoginInputs(){
@@ -306,16 +271,18 @@ async function doResetPassword(){
     byId("tabRegister").addEventListener("click", showRegister);
     byId("loginBtn").addEventListener("click", doLogin);
     byId("clearBtn").addEventListener("click", clearLoginInputs);
-    byId("resetBtn").addEventListener("click", doReset);
+    byId("resetBtn").addEventListener("click", doResetPassword);
     byId("regBtn").addEventListener("click", doRegister);
     byId("regClearBtn").addEventListener("click", clearRegisterInputs);
-    byId("resetBtn").addEventListener("click", doResetPassword);
+
     // INIT
     (async () => {
       showLogin();
       renderNextContest();
 
-      const { data: sessData } = await supabase.auth.getSession();
+      const { data: sessData, error } = await supabase.auth.getSession();
+      if(error) console.warn("getSession error:", error);
+
       if(sessData?.session){
         await goAfterLogin(sessData.session);
         return;
