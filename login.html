@@ -4,10 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Cyprus Match Predict</title>
-
-  <!-- προαιρετικό: για να μην βγάζει 404 favicon -->
   <link rel="icon" href="icon-192.png" />
-
   <style>
     :root{
       --bg:#070b13;--b:rgba(255,255,255,.12);
@@ -44,7 +41,6 @@
     }
     .g{background:var(--g);border-color:var(--gb)}
     .a{background:var(--a);border-color:var(--ab)}
-    .r{background:var(--r);border-color:var(--rb)}
     .box{
       border:1px solid var(--b);border-radius:18px;background:rgba(0,0,0,.18);
       padding:12px;margin-top:12px;
@@ -100,7 +96,7 @@
       <div class="row">
         <button class="btn g" id="loginBtn" type="button">✅ Login</button>
         <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
-        <button class="btn r" id="resetBtn" type="button">🔁 Reset Password</button>
+        <button class="btn" id="resetBtn" type="button">🔁 Reset Password</button>
       </div>
 
       <div id="loginErr" class="mini" style="color:#ffb3b3;display:none"></div>
@@ -142,24 +138,10 @@
   <script type="module">
     import { supabase } from "./supabase.js";
 
-    // 🔒 ΒΑΛΕ ΕΔΩ ΤΟ ADMIN EMAIL ΣΟΥ
     const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
     const KEY_NEXT = "nextContestStartISO";
 
     const byId = (id) => document.getElementById(id);
-
-    // ✅ check ότι υπάρχουν όλα (για να μην πεθαίνει σιωπηλά)
-    const requiredIds = [
-      "tabLogin","tabRegister","loginBtn","clearBtn","resetBtn","regBtn","regClearBtn",
-      "loginBox","registerBox","nextText","nextSub",
-      "loginEmail","loginPass","regUser","regEmail","regPass",
-      "loginErr","regErr"
-    ];
-    for (const id of requiredIds) {
-      if (!byId(id)) {
-        console.error("Missing element id:", id);
-      }
-    }
 
     function setInlineMsg(id, msg){
       const el = byId(id);
@@ -225,7 +207,6 @@
 
     async function doLogin(){
       clearMsgs();
-
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
       const password = String(byId("loginPass").value || "");
 
@@ -234,20 +215,14 @@
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if(error){
-        return setInlineMsg("loginErr", `Login error: ${error.message}`);
-      }
-      if(!data?.session){
-        return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
-      }
+      if(error) return setInlineMsg("loginErr", `Login error: ${error.message}`);
+      if(!data?.session) return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
 
       await goAfterLogin(data.session);
     }
 
     async function doRegister(){
       clearMsgs();
-
       const username = String(byId("regUser").value || "").trim();
       const email = String(byId("regEmail").value || "").trim().toLowerCase();
       const password = String(byId("regPass").value || "");
@@ -257,23 +232,18 @@
       }
 
       const { data, error } = await supabase.auth.signUp({ email, password });
-
-      if(error){
-        return setInlineMsg("regErr", `Register error: ${error.message}`);
-      }
+      if(error) return setInlineMsg("regErr", `Register error: ${error.message}`);
 
       const userId = data?.user?.id;
 
-      // ✅ προαιρετικό profiles upsert (αν έχεις RLS μπορεί να δώσει 401 - δεν χαλάει το signup)
+      // Προαιρετικό: profiles upsert (αν έχεις RLS θα αποτύχει - δεν χαλάει το signup)
       if(userId){
         const payload = { id: userId, username: username || null, email };
         const { error: pErr } = await supabase
           .from("profiles")
           .upsert(payload, { onConflict: "id" });
 
-        if(pErr){
-          console.warn("profiles upsert error:", pErr);
-        }
+        if(pErr) console.warn("profiles upsert error:", pErr);
       }
 
       showLogin();
@@ -282,24 +252,17 @@
       setInlineMsg("loginErr","✅ Έγινε εγγραφή! Τώρα κάνε login. (Ίσως χρειάζεται email confirm ανάλογα τις ρυθμίσεις σου.)");
     }
 
-    async function doResetPassword(){
+    async function doReset(){
       clearMsgs();
-
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
-      if(!email){
-        return setInlineMsg("loginErr","Γράψε πρώτα το email σου.");
-      }
+      if(!email) return setInlineMsg("loginErr","Γράψε πρώτα το email σου και πάτα Reset.");
 
-      // ✅ IMPORTANT: να ταιριάζει με Redirect URLs στο Supabase
-      const redirectTo = location.origin + "/login.html";
+      const redirectTo = location.origin + location.pathname.replace("login.html","") + "reset.html";
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if(error) return setInlineMsg("loginErr","Reset error: " + error.message);
 
-      if(error){
-        return setInlineMsg("loginErr","Reset error: " + error.message);
-      }
-
-      setInlineMsg("loginErr","✅ Σου έστειλα email για αλλαγή κωδικού. Έλεγξε και SPAM.");
+      setInlineMsg("loginErr","✅ Στάλθηκε email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
     }
 
     function clearLoginInputs(){
@@ -314,41 +277,32 @@
       setInlineMsg("regErr","");
     }
 
-    // BIND (κουμπιά)
+    // BIND
     byId("tabLogin").addEventListener("click", showLogin);
     byId("tabRegister").addEventListener("click", showRegister);
     byId("loginBtn").addEventListener("click", doLogin);
     byId("clearBtn").addEventListener("click", clearLoginInputs);
-    byId("resetBtn").addEventListener("click", doResetPassword);
+    byId("resetBtn").addEventListener("click", doReset);
     byId("regBtn").addEventListener("click", doRegister);
     byId("regClearBtn").addEventListener("click", clearRegisterInputs);
 
     // INIT
     (async () => {
-      try{
-        const { data: sessData, error } = await supabase.auth.getSession();
-        if(error) console.warn("getSession error:", error);
+      showLogin();
+      renderNextContest();
 
-        if(sessData?.session){
-          await goAfterLogin(sessData.session);
-          return;
-        }
-
-        showLogin();
-        renderNextContest();
-
-        supabase.auth.onAuthStateChange((_event, session) => {
-          if(session) goAfterLogin(session);
-        });
-
-        console.log("SUPABASE OK");
-      }catch(err){
-        console.error("JS ERROR:", err);
-        setInlineMsg("loginErr", "JS ERROR: " + (err?.message || String(err)));
-        showLogin();
+      const { data: sessData } = await supabase.auth.getSession();
+      if(sessData?.session){
+        await goAfterLogin(sessData.session);
+        return;
       }
+
+      supabase.auth.onAuthStateChange((_event, session) => {
+        if(session) goAfterLogin(session);
+      });
+
+      console.log("SUPABASE OK");
     })();
   </script>
 </body>
 </html>
-
