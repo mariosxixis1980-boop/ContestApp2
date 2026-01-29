@@ -195,6 +195,30 @@
       byId("tabRegister").className = "btn a tab";
       byId("tabLogin").className = "btn tab";
     }
+const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  redirectTo: location.origin + "/reset.html"
+});
+
+
+
+async function doResetPassword(){
+  clearMsgs();
+
+  const email = String(byId("loginEmail").value || "").trim().toLowerCase();
+  if(!email){
+    return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + "/reset.html"
+  });
+
+  if(error){
+    return setInlineMsg("loginErr", "Reset error: " + error.message);
+  }
+
+  setInlineMsg("loginErr", "✅ Σου έστειλα email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
+}
 
     async function goAfterLogin(session){
       const email = String(session?.user?.email || "");
