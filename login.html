@@ -300,6 +300,18 @@
         console.error("JS ERROR:", err);
         setInlineMsg("loginErr", "JS ERROR: " + (err?.message || String(err)));
         showLogin();
+        $("resetBtn").addEventListener("click", async () => {
+clearMsgs();
+const email = String($("loginEmail").value || "").trim().toLowerCase();
+if (!email) return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
+
+const { error } = await supabase.auth.resetPasswordForEmail(email, {
+redirectTo: location.origin + location.pathname.replace("login.html","") + "login.html"
+});
+
+if (error) return setInlineMsg("loginErr", "Reset error: " + error.message);
+setInlineMsg("loginErr", "✅ Σου έστειλα email για αλλαγή κωδικού.");
+});
       }
     })();
   </script>
