@@ -152,12 +152,7 @@ function N(msg, type='warn'){
     location.href='login.html';
     return;
   }
-  // Αν είναι admin, μην μπαίνει dashboard
-  if(s.isAdmin){
-    location.href='admin.html';
-    return;
-  }
-})();
+
 
 $('lo').onclick=()=>{ localStorage.removeItem(K.S); location.href='login.html'; };
 
