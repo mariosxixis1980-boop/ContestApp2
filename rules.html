@@ -1,92 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="el">
 <head>
-  <meta charset="UTF-8">
-  <title>Κανόνες Παιχνιδιού</title>
-  <style>
-    body{
-      font-family: Arial, sans-serif;
-      background:#f7f7f7;
-      color:#222;
-      padding:20px;
-      line-height:1.6;
-    }
-    h1,h2{color:#0b7a3b}
-    .box{
-      background:#fff;
-      padding:20px;
-      border-radius:8px;
-      max-width:900px;
-      margin:auto;
-    }
-    ul{margin-left:20px}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Reset Password</title>
+
+<style>
+body{
+  font-family:system-ui;
+  background:#070b13;
+  color:#eaf1ff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+}
+.card{
+  width:360px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:16px;
+  padding:20px;
+}
+input{
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  margin-top:10px;
+}
+button{
+  margin-top:12px;
+  padding:10px;
+  width:100%;
+  border-radius:12px;
+  border:none;
+  background:#2ecc71;
+  font-weight:700;
+  cursor:pointer;
+}
+.msg{margin-top:10px;font-size:14px}
+</style>
 </head>
+
 <body>
-<div class="box">
+<div class="card">
+  <h2>🔐 Νέος κωδικός</h2>
+  <p>Βάλε νέο password και πάτα «Αλλαγή».</p>
 
-<h1>📋 Κανόνες Παιχνιδιού</h1>
+  <input id="newPass" type="password" placeholder="Νέος κωδικός"/>
+  <button id="saveBtn">✅ Αλλαγή κωδικού</button>
 
-<h2>1. Γενικά</h2>
-<ul>
-  <li>Ο διαγωνισμός βασίζεται σε προβλέψεις αγώνων (1 / X / 2).</li>
-  <li>Κάθε αγωνιστική περιλαμβάνει συγκεκριμένο αριθμό αγώνων.</li>
-  <li>Οι βαθμοί προστίθενται εβδομαδιαία και <b>δεν διαγράφονται</b>.</li>
-</ul>
-
-<h2>2. Βαθμολογία</h2>
-<ul>
-  <li>Σωστή πρόβλεψη: <b>+1 βαθμός</b></li>
-  <li>Λάθος πρόβλεψη: <b>0 βαθμοί</b></li>
-</ul>
-
-<h2>3. Bonus +2 βαθμών</h2>
-<ul>
-  <li>Αν ο χρήστης πετύχει <b>όλους</b> τους αγώνες μιας αγωνιστικής που έχουν τελικό αποτέλεσμα, παίρνει <b>+2 bonus βαθμούς</b>.</li>
-  <li>Το BONUS ισχύει ακόμη και αν έχουν χρησιμοποιηθεί HELP (μετράνε ως σωστές προβλέψεις).</li>
-</ul>
-
-<h2>4. Αγώνες OFF</h2>
-<ul>
-  <li>Αγώνας OFF σημαίνει αναβολή / ακύρωση.</li>
-  <li>Αν ο χρήστης έχει χρησιμοποιήσει HELP στον αγώνα OFF → <b>παίρνει +1 βαθμό</b>.</li>
-  <li>Αν δεν έχει HELP στον αγώνα OFF → <b>δεν παίρνει βαθμό</b>.</li>
-  <li>Ο αγώνας OFF <b>δεν μετράει</b> στα απαιτούμενα παιχνίδια για το BONUS.</li>
-</ul>
-
-<h2>5. HELP €1,99</h2>
-<ul>
-  <li>Κόστος: <b>€1,99</b></li>
-  <li>Ισχύει για <b>3 αγώνες</b> συνολικά.</li>
-  <li>Ο χρήστης <b>δεν επιλέγει αποτέλεσμα</b> στους αγώνες HELP.</li>
-  <li>Παίρνει <b>αυτόματα τον βαθμό</b> (+1).</li>
-  <li>Αν πετύχει όλους τους υπόλοιπους αγώνες → <b>παίρνει και το BONUS</b>.</li>
-  <li>Το HELP μπορεί να αγοραστεί <b>ΜΟΝΟ μία φορά ανά διαγωνισμό</b>.</li>
-</ul>
-
-<h2>6. Κριτήρια Ισοβαθμίας</h2>
-<p>Σε περίπτωση ισοβαθμίας, η κατάταξη γίνεται με τη σειρά:</p>
-<ol>
-  <li>Περισσότερες φορές BONUS +2</li>
-  <li>Μεγαλύτερο συνεχόμενο σερί BONUS</li>
-  <li>Περισσότερες αγωνιστικές με <b>μόνο 1 λάθος</b></li>
-</ol>
-
-<h2>7. Final Week</h2>
-<ul>
-  <li>Η τελευταία αγωνιστική ορίζεται από τον διαχειριστή.</li>
-  <li>Η βαθμολογία υπολογίζεται κανονικά.</li>
-  <li>Ο νικητής προκύπτει αυτόματα από το σύστημα.</li>
-</ul>
-
-<h2>8. Νικητής</h2>
-<ul>
-  <li>Ο πρώτος της τελικής βαθμολογίας είναι ο νικητής.</li>
-  <li>Το σύστημα εμφανίζει ειδική κάρτα νίκης στον νικητή.</li>
-</ul>
-
-<p><b>Καλή επιτυχία και καλή διασκέδαση! 🏆</b></p>
-
+  <div id="msg" class="msg"></div>
 </div>
+
+<script type="module">
+import { supabase } from "./supabase.js";
+
+const msg = (t,c="")=>{
+  const m=document.getElementById("msg");
+  m.textContent=t;
+  m.style.color=c||"#ffdede";
+};
+
+document.getElementById("saveBtn").addEventListener("click", async ()=>{
+  const password=document.getElementById("newPass").value;
+  if(!password) return msg("Γράψε νέο κωδικό.");
+
+  // ⬇️ ΠΑΙΡΝΟΥΜΕ ΤΟ SESSION ΑΠΟ ΤΟ RESET LINK
+  const { data:{session} } = await supabase.auth.getSession();
+  if(!session) return msg("❌ Δεν βρέθηκε session reset.");
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if(error) return msg("Error: "+error.message);
+
+  msg("✅ Ο κωδικός άλλαξε! Πήγαινε στο login.","#9cffc7");
+
+  setTimeout(()=>{
+    location.href="login.html";
+  },1500);
+});
+</script>
 </body>
 </html>
