@@ -63,14 +63,6 @@ function N(msg, type='warn'){
 /* =========================
    ✅ GUARD
 ========================= */
-(function guard(){
-  const s = sess();
-  if(!s || !s.username){
-    location.href='login.html';
-    return;
-  }
-  // αν δεν είναι admin, θα το δείξει το render() στο guard box
-})();
 
 /* =========================
    META
