@@ -197,10 +197,21 @@
     }
 
     async function goAfterLogin(session){
-      const email = String(session?.user?.email || "");
-      if(email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
+      const email = String(session?.user?.email || "").toLowerCase();
+      const username = email ? email.split("@")[0] : "user";
+      const isAdmin = email && email === ADMIN_EMAIL.toLowerCase();
+
+      // ✅ legacy session για τα υπόλοιπα pages (admin.js/dashboard κλπ)
+      localStorage.setItem("session", JSON.stringify({
+        username,
+        email,
+        isAdmin
+      }));
+
+      if(isAdmin){
         location.href = "admin.html";
-      }else{
+    }
+else{
         location.href = "dashboard.html";
       }
     }

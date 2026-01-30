@@ -63,17 +63,32 @@
     const msg = document.getElementById("msg");
     const passInput = document.getElementById("newPass");
 
-    // 1️⃣ ΠΙΑΝΟΥΜΕ ΤΑ TOKENS ΑΠΟ ΤΟ URL
-    const hash = new URLSearchParams(location.hash.substring(1));
-    const access_token = hash.get("access_token");
-    const refresh_token = hash.get("refresh_token");
+    
+    // 1️⃣ ΠΙΑΝΟΥΜΕ SESSION ΑΠΟ ΤΟ URL (ΝΕΟ: code=..., ΠΑΛΙΟ: #access_token=...)
+    const qs = new URLSearchParams(location.search);
+    const code = qs.get("code");
 
-    if(!access_token || !refresh_token){
-      msg.textContent = "❌ Λείπει auth session. Άνοιξε ξανά το link από το email.";
-      msg.style.color = "#ffb3b3";
+    if(code){
+      // Νέα ροή Supabase (PKCE / code exchange)
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if(error){
+        msg.textContent = "❌ Δεν μπόρεσα να ανοίξω session από το link. Άνοιξε ξανά το email link.";
+        msg.style.color = "#ffb3b3";
+      }
     }else{
-      await supabase.auth.setSession({ access_token, refresh_token });
+      // Παλιά ροή (tokens στο hash)
+      const hash = new URLSearchParams(location.hash.substring(1));
+      const access_token = hash.get("access_token");
+      const refresh_token = hash.get("refresh_token");
+
+      if(!access_token || !refresh_token){
+        msg.textContent = "❌ Λείπει auth session. Άνοιξε ξανά το link από το email.";
+        msg.style.color = "#ffb3b3";
+      }else{
+        await supabase.auth.setSession({ access_token, refresh_token });
+      }
     }
+
 
     // 2️⃣ ΑΛΛΑΓΗ PASSWORD
     document.getElementById("saveBtn").addEventListener("click", async () => {
