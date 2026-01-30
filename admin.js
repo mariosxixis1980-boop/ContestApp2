@@ -1,3 +1,22 @@
+import { supabase } from "./supabase.js";
+
+// ✅ Sync Supabase session -> localStorage session used by the rest of the app
+const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+
+const { data: { session } , error: sessErr } = await supabase.auth.getSession();
+if (sessErr) console.warn("getSession error:", sessErr);
+
+if (!session || !session.user) {
+  location.replace("login.html");
+  throw new Error("Not logged in");
+}
+
+const email = String(session.user.email || "").toLowerCase();
+const username = (email.split("@")[0] || "user").trim();
+const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
+
+localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
+
 /* =========================
    admin.js (FULL FILE)
    ✅ Added: tieStatsByContest for Final Week tie-breaks
@@ -839,7 +858,7 @@ function render(){
 /* =========================
    EVENTS (buttons)
 ========================= */
-$('lo').onclick=()=>{localStorage.removeItem(K.S);location.href='login.html';};
+$('lo').onclick=async()=>{ localStorage.removeItem(K.S); try{ await supabase.auth.signOut(); }catch(e){ console.warn(e); } location.href='login.html'; };
 $('re').onclick=render;
 $('nc').onclick=newContest;
 $('startBtn').onclick=toggleContestStart;

@@ -207,76 +207,8 @@ hr{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0}
   </div>
 </div>
 
-<script src="admin.js"></script>
+<script type="module" src="admin.js"></script>
 
 <!-- ✅ FIX: admin guard ΧΩΡΙΣ redirect loop -->
-<script type="module">
-  import { supabase } from "./supabase.js";
-
-  // 👉 ΒΑΛΕ ΤΟ ADMIN EMAIL ΣΟΥ (case-insensitive)
-  const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
-  const guard = document.getElementById("guard");
-  const panel = document.getElementById("panel");
-  const st = document.getElementById("st");
-  const w  = document.getElementById("w");
-
-  function showGuard(msg){
-    if (panel) panel.style.display = "none";
-    if (guard) guard.style.display = "block";
-    if (st) st.textContent = "Admin: NO";
-    if (msg) {
-      // βάλε μήνυμα μέσα στο guard (προαιρετικό)
-      guard.querySelector("b").textContent = msg;
-    }
-  }
-  function showPanel(email){
-    if (guard) guard.style.display = "none";
-    if (panel) panel.style.display = "block";
-    if (st) st.textContent = "Admin: YES";
-    if (w)  w.textContent  = "User: " + (email || "-");
-  }
-
-  function isAdminEmail(email){
-    return String(email || "").trim().toLowerCase() === String(ADMIN_EMAIL).trim().toLowerCase();
-  }
-
-  // 1) Πάρε session
-  const { data: sessData, error: sessErr } = await supabase.auth.getSession();
-  if (sessErr) console.warn("getSession error:", sessErr);
-
-  const session = sessData?.session;
-
-  // 2) Αν δεν είναι logged in -> δείξε guard (ΟΧΙ redirect)
-  if (!session?.user) {
-    showGuard("Δεν είσαι logged in.");
-  } else {
-    const email = session.user.email;
-    if (!isAdminEmail(email)) {
-      showGuard("Δεν είσαι admin.");
-    } else {
-      showPanel(email);
-    }
-  }
-
-  // 3) Αν αλλάξει auth state (logout/login) -> ενημέρωσε UI χωρίς loop
-  supabase.auth.onAuthStateChange((_event, newSession) => {
-    const u = newSession?.user;
-    if (!u) return showGuard("Δεν είσαι logged in.");
-    if (!isAdminEmail(u.email)) return showGuard("Δεν είσαι admin.");
-    showPanel(u.email);
-  });
-
-  // 4) Logout button (αν υπάρχει στο admin.js μπορείς να το αφήσεις, εδώ είναι extra safety)
-  const loBtn = document.getElementById("lo");
-  if (loBtn) {
-    loBtn.addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      // πάμε login ΜΟΝΟ μία φορά
-      location.replace("login.html");
-    });
-  }
-</script>
-
 </body>
 </html>
