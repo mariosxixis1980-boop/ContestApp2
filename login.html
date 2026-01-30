@@ -105,7 +105,7 @@
 
     <!-- REGISTER -->
     <div class="box hide" id="registerBox">
-      <label>Username (προαιρετικό)</label>
+      <label>Username (ΥΠΟΧΡΕΩΤΙΚΟ)</label>
       <input id="regUser" autocomplete="username" placeholder="π.χ marios10"/>
 
       <label>Email</label>
@@ -138,7 +138,9 @@
   <script type="module">
     import { supabase } from "./supabase.js";
 
+    // 👉 ΒΑΛΕ ΕΔΩ ΤΟ ADMIN EMAIL ΣΟΥ (ίδιο με admin.html)
     const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+
     const KEY_NEXT = "nextContestStartISO";
     const byId = (id) => document.getElementById(id);
 
@@ -187,7 +189,6 @@
       byId("tabLogin").className = "btn a tab";
       byId("tabRegister").className = "btn tab";
     }
-
     function showRegister(){
       clearMsgs();
       byId("registerBox").classList.remove("hide");
@@ -198,20 +199,9 @@
 
     async function goAfterLogin(session){
       const email = String(session?.user?.email || "").toLowerCase();
-      const username = email ? email.split("@")[0] : "user";
-      const isAdmin = email && email === ADMIN_EMAIL.toLowerCase();
-
-      // ✅ legacy session για τα υπόλοιπα pages (admin.js/dashboard κλπ)
-      localStorage.setItem("session", JSON.stringify({
-        username,
-        email,
-        isAdmin
-      }));
-
-      if(isAdmin){
+      if(email && email === ADMIN_EMAIL.toLowerCase()){
         location.href = "admin.html";
-    }
-else{
+      }else{
         location.href = "dashboard.html";
       }
     }
@@ -220,7 +210,10 @@ else{
       clearMsgs();
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
       const password = String(byId("loginPass").value || "");
-      if(!email || !password) return setInlineMsg("loginErr","Γράψε email και password.");
+
+      if(!email || !password){
+        return setInlineMsg("loginErr","Γράψε email και password.");
+      }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if(error) return setInlineMsg("loginErr", `Login error: ${error.message}`);
@@ -229,40 +222,89 @@ else{
       await goAfterLogin(data.session);
     }
 
-    async function doRegister(){
+    // ✅ RESET PASSWORD (μόνο 1 handler)
+    async function doResetPassword(){
       clearMsgs();
-      const username = String(byId("regUser").value || "").trim();
-      const email = String(byId("regEmail").value || "").trim().toLowerCase();
-      const password = String(byId("regPass").value || "");
-      if(!email || !password) return setInlineMsg("regErr","Βάλε email και password για εγγραφή.");
-
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if(error) return setInlineMsg("regErr", `Register error: ${error.message}`);
-
-      const userId = data?.user?.id;
-      if(userId){
-        const payload = { id: userId, username: username || null, email };
-        const { error: pErr } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-        if(pErr) console.warn("profiles upsert error:", pErr);
+      const email = String(byId("loginEmail").value || "").trim().toLowerCase();
+      if(!email){
+        return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
       }
 
+      // σωστό redirect για local / github pages κτλ
+      const base = location.origin + location.pathname.replace(/[^\/]*$/, "");
+      const redirectTo = base + "reset.html";
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if(error){
+        return setInlineMsg("loginErr", "Reset error: " + error.message);
+      }
+
+      setInlineMsg("loginErr", "✅ Σου έστειλα email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
+    }
+
+    async function doRegister(){
+      clearMsgs();
+
+      const usernameRaw = String(byId("regUser").value || "").trim();
+      const username = usernameRaw.toLowerCase();
+      const email = String(byId("regEmail").value || "").trim().toLowerCase();
+      const password = String(byId("regPass").value || "");
+
+      if(!username){
+        return setInlineMsg("regErr","Βάλε username (υποχρεωτικό).");
+      }
+      if(!email || !password){
+        return setInlineMsg("regErr","Βάλε email και password για εγγραφή.");
+      }
+
+      // ✅ Μπλόκο: ΜΗΝ επιτρέπεις εγγραφή με το admin email
+      if(email === ADMIN_EMAIL.toLowerCase()){
+        return setInlineMsg("regErr","❌ Αυτό το email είναι του admin. Βάλε άλλο email για πελάτη.");
+      }
+
+      // ✅ Supabase signUp
+      const { data, error } = await supabase.auth.signUp({ email, password });
+
+      if(error){
+        const msg = String(error.message || "");
+        // Πιο ανθρώπινο μήνυμα για “email ήδη υπάρχει”
+        if(msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already")){
+          return setInlineMsg("regErr","❌ Αυτό το email χρησιμοποιείται ήδη. Κάνε Login ή Reset Password.");
+        }
+        return setInlineMsg("regErr", `Register error: ${error.message}`);
+      }
+
+      const userId = data?.user?.id;
+
+      // ✅ Profiles upsert (ΤΩΡΑ με username ΠΑΝΤΑ)
+      if(userId){
+        const payload = {
+          id: userId,
+          email,
+          username,
+          isAdmin: false
+        };
+
+        const { error: pErr } = await supabase
+          .from("profiles")
+          .upsert(payload, { onConflict: "id" });
+
+        // Αν χτυπήσει UNIQUE username, πες το καθαρά
+        if(pErr){
+          const pm = String(pErr.message || "");
+          if(pm.toLowerCase().includes("profiles_username_key") || pm.toLowerCase().includes("duplicate")){
+            return setInlineMsg("regErr","❌ Αυτό το username χρησιμοποιείται ήδη. Βάλε άλλο.");
+          }
+          // Αν υπάρχει RLS και κόβει, δείξε μήνυμα (αλλά δεν χαλάει auth)
+          return setInlineMsg("regErr","⚠️ Η εγγραφή έγινε, αλλά δεν γράφτηκε profile. (Έλεγξε RLS / table rules). " + pErr.message);
+        }
+      }
+
+      // γύρνα στο login
       showLogin();
       byId("loginEmail").value = email;
       byId("loginPass").value = "";
       setInlineMsg("loginErr","✅ Έγινε εγγραφή! Τώρα κάνε login. (Ίσως χρειάζεται email confirm.)");
-    }
-
-    async function doResetPassword(){
-      clearMsgs();
-      const email = String(byId("loginEmail").value || "").trim().toLowerCase();
-      if(!email) return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: location.origin + "/reset.html"
-      });
-
-      if(error) return setInlineMsg("loginErr", "Reset error: " + error.message);
-      setInlineMsg("loginErr", "✅ Σου έστειλα email για αλλαγή κωδικού. Κοίτα Inbox/Spam.");
     }
 
     function clearLoginInputs(){
@@ -291,8 +333,8 @@ else{
       showLogin();
       renderNextContest();
 
-      const { data: sessData, error } = await supabase.auth.getSession();
-      if(error) console.warn("getSession error:", error);
+      const { data: sessData, error: sessErr } = await supabase.auth.getSession();
+      if(sessErr) console.warn("getSession error:", sessErr);
 
       if(sessData?.session){
         await goAfterLogin(sessData.session);
