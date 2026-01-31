@@ -94,11 +94,9 @@ h1{margin:0}
       <div class="pill" id="lockState">Κατάσταση: -</div>
       <div class="pill" id="dlPill">Deadline:-</div>
 
-      <!-- ✅ SPANS -->
       <div class="pill">Contest: <b><span id="contestCode">-</span></b></div>
       <div class="pill">Αγωνιστική: <b><span id="contestRound">-</span></b></div>
       <div class="pill">Status: <b><span id="contestStatus">-</span></b></div>
-      <!-- ✅ /SPANS -->
     </div>
 
     <div class="row" style="margin-top:10px">
@@ -122,7 +120,8 @@ h1{margin:0}
 const K={
   S:'session',A:'activeContest',M:'contestMatches',
   P:'picks',H:'help199',META:'contestMeta',
-  WARN:'helpWarn',LOCK:'picksLocked'
+  WARN:'helpWarn',LOCK:'picksLocked',
+  U:'users'
 };
 const $=i=>document.getElementById(i);
 const R=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
@@ -251,7 +250,10 @@ function goPay(){
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(s?.username||'').toLowerCase();
-  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+
+  // ✅ FIX: Μπλοκάρει ΜΟΝΟ αν υπάρχει eligibleUsers και δεν είσαι μέσα
+  const eligLower = elig.map(x=>String(x).toLowerCase());
+  const blocked = !!(started && eligLower.length>0 && !eligLower.includes(me));
   if(blocked) return N('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να αγοράσεις.','err');
 
   if(!s) return location.href='login.html';
@@ -269,7 +271,8 @@ function goPay(){
   const tries = [
     'pay.html',
     './pay.html',
-    (location.origin ? (location.origin + '/pay.html') : null)
+    (location.origin ? (location.origin + '/pay.html') : null),
+    'http://localhost:8158/pay.html'
   ].filter(Boolean);
 
   let i = 0;
@@ -297,7 +300,10 @@ function toggleHelp(cid,u,mid){
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(u||'').toLowerCase();
-  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+
+  // ✅ FIX: Μπλοκάρει ΜΟΝΟ αν υπάρχει eligibleUsers και δεν είσαι μέσα
+  const eligLower = elig.map(x=>String(x).toLowerCase());
+  const blocked = !!(started && eligLower.length>0 && !eligLower.includes(me));
   if(blocked) return N('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να παίξεις.','err');
 
   const m=(matches||[]).find(x=>x && x.id===mid);
@@ -337,7 +343,10 @@ function onLockBtn(cid,u,matches){
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(u||'').toLowerCase();
-  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+
+  // ✅ FIX: Μπλοκάρει ΜΟΝΟ αν υπάρχει eligibleUsers και δεν είσαι μέσα
+  const eligLower = elig.map(x=>String(x).toLowerCase());
+  const blocked = !!(started && eligLower.length>0 && !eligLower.includes(me));
   if(blocked) return N('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να παίξεις.','err');
 
   const cur=isLocked(cid,u);
@@ -347,7 +356,7 @@ function onLockBtn(cid,u,matches){
     return render();
   }
   if(!canLockAllPicks(cid,u,matches)){
-    return N('⛔ Δεν κλείδωσες πρόβλεψη για όλα τα παιχνίδια της αγωνιστικής','err');
+    return N('⛔ Δεν κλειδωσες πρόβλεψη για όλα τα παιχνίδια της αγωνιστικής','err');
   }
   setLocked(cid,u,true);
   N('✅ Κλείδωσες τις προβλέψεις σου','ok');
@@ -365,7 +374,10 @@ function onSavePick(cid,u,mid){
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(u||'').toLowerCase();
-  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+
+  // ✅ FIX: Μπλοκάρει ΜΟΝΟ αν υπάρχει eligibleUsers και δεν είσαι μέσα
+  const eligLower = elig.map(x=>String(x).toLowerCase());
+  const blocked = !!(started && eligLower.length>0 && !eligLower.includes(me));
   if(blocked) return N('⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει — δεν μπορείς να παίξεις.','err');
 
   const m=(matches||[]).find(x=>x && x.id===mid);
@@ -408,8 +420,6 @@ function render(){
     $('contestCode').textContent='-';
     $('contestRound').textContent='-';
     $('contestStatus').textContent='-';
-    $('dlPill').textContent='Deadline:-';
-    $('lockState').textContent='Κατάσταση: -';
     return;
   }
 
@@ -420,7 +430,6 @@ function render(){
   $('roundInfo').textContent='Αγωνιστική: '+(meta.round||1);
   $('prizeText').textContent=(String(meta.prizeText||'').trim() || '-');
 
-  // ✅ spans
   $('contestCode').textContent = cid;
   $('contestRound').textContent = (meta.round ?? 1);
   $('contestStatus').textContent = (meta.contestStarted ? 'Ενεργός' : 'Ανενεργός');
@@ -435,7 +444,11 @@ function render(){
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(s.username||'').toLowerCase();
-  const blocked = !!(started && !elig.map(x=>String(x).toLowerCase()).includes(me));
+
+  // ✅ FIX: Μπλοκάρει ΜΟΝΟ αν υπάρχει eligibleUsers και δεν είσαι μέσα
+  const eligLower = elig.map(x=>String(x).toLowerCase());
+  const blocked = !!(started && eligLower.length>0 && !eligLower.includes(me));
+
   $('blockedBox').style.display = blocked ? 'block' : 'none';
 
   const effectiveLocked = blocked || timeLocked || userLocked;
@@ -541,20 +554,38 @@ render();
 <script type="module">
 import { supabase } from "./supabase.js";
 
-/* ✅ Supabase session guard + sync -> localStorage session
-   (Δεν τραβάμε contests από Supabase εδώ — για να μην έχεις mismatch.) */
-const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
+/* =========================
+   PROTECT DASHBOARD (SUPABASE)
+========================= */
 const { data: { session } } = await supabase.auth.getSession();
-if(!session || !session.user){
+if (!session) {
   location.replace("login.html");
-  throw new Error("Not logged in");
 }
 
-const email = String(session.user.email || "").toLowerCase();
-const username = (email.split("@")[0] || "user").trim();
-const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
-localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
+/* ✅ FIX #1: Sync supabase user -> localStorage session + users[] (για να τον βλέπει ο Admin) */
+{
+  const email = String(session.user.email || "").toLowerCase();
+  const username = (email.split("@")[0] || "user").trim();
+  const isAdmin = (email === "mariosxixis1980@gmail.com"); // βάλε εδώ το admin email
+
+  localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
+
+  const K_U = "users";
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(K_U) || "[]"); } catch { arr = []; }
+  if(!Array.isArray(arr)) arr = [];
+
+    const idx = arr.findIndex(x =>
+    String(x?.email||"").toLowerCase() === email ||
+    String(x?.username||"").toLowerCase() === username.toLowerCase()
+  );
+
+  const u = { username, email, isAdmin };
+  if(idx >= 0) arr[idx] = { ...arr[idx], ...u };
+  else arr.push(u);
+
+  localStorage.setItem(K_U, JSON.stringify(arr));
+}
 
 /* ✅ Logout: supabase + localStorage */
 document.getElementById("lo").addEventListener("click", async () => {
@@ -562,6 +593,67 @@ document.getElementById("lo").addEventListener("click", async () => {
   localStorage.removeItem("session");
   location.replace("login.html");
 });
+
+/* =========================
+   ✅ SYNC ACTIVE CONTEST -> localStorage (ώστε να γεμίζουν τα spans)
+========================= */
+async function loadActiveContestAndSync(){
+  const { K, R, W, N, render } = window.CMP;
+
+  const { data: contests, error: cErr } = await supabase
+    .from("contests")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (cErr) {
+    console.error("Contest load error:", cErr);
+    N("⛔ Πρόβλημα φόρτωσης διαγωνισμού", "err");
+    return;
+  }
+
+  if (!contests || contests.length === 0) {
+    W(K.A, null);
+    render();
+    return;
+  }
+
+  const contest = contests.find(x => x && x.active === true) || contests[0];
+
+  // 🔧 contest id που χρησιμοποιούμε παντού (code αν υπάρχει)
+  const cid = (contest.code ?? contest.id ?? contest.contest_code ?? contest.contest_cod ?? "").toString();
+  if(!cid){
+    N("⛔ Δεν βρέθηκε contest code/id", "err");
+    return;
+  }
+
+  // γράφουμε activeContest
+  W(K.A, { id: cid });
+
+  // γράφουμε contestMeta (ώστε να εμφανίζει contestRound/Status/Prize)
+  const metaAll = R(K.META, {});
+  metaAll[cid] = metaAll[cid] || {};
+
+  // προσπάθεια να πάρουμε τα πεδία από supabase (αν υπάρχουν)
+  const round = (contest.round ?? metaAll[cid].round ?? 1);
+  const prizeText = (contest.prize_text ?? contest.prizeText ?? metaAll[cid].prizeText ?? "");
+  const started = (contest.active === true); // αν έχει active=true, το θεωρούμε started/ενεργό
+
+  metaAll[cid] = {
+    ...metaAll[cid],
+    round: Number(round) || 1,
+    prizeText: String(prizeText || ""),
+    contestStarted: !!started,
+    // ✅ σημαντικό: άσε eligibleUsers άδειο αν δεν έρχεται από κάπου, για να ΜΗΝ μπλοκάρει
+    eligibleUsers: Array.isArray(metaAll[cid].eligibleUsers) ? metaAll[cid].eligibleUsers : []
+  };
+
+  W(K.META, metaAll);
+
+  render();
+}
+
+loadActiveContestAndSync();
 </script>
 
 </body>
