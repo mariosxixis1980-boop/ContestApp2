@@ -95,6 +95,10 @@ h1{margin:0}
       <button class="btn r" id="lockBtn" type="button">🔒 Κλείδωμα προβλέψεων</button>
       <div class="pill" id="lockState">Κατάσταση: -</div>
       <div class="pill" id="dlPill">Deadline:-</div>
+      <div class="pill">Contest: <b><span id="contestCode">-</span></b></div>
+      <div class="pill">Αγωνιστική: <b><span id="contestRound">-</span></b></div>
+      <div class="pill">Status: <b><span id="contestStatus">-</span></b></div>
+
     </div>
 
     <div class="row" style="margin-top:10px">
@@ -537,34 +541,48 @@ window.toggleHelp = toggleHelp;
 
 render();
 </script>
-  <script type="module">
+<script type="module">
 import { supabase } from "./supabase.js";
 
-// 🔒 PROTECT DASHBOARD
+/* =========================
+   PROTECT DASHBOARD (LOGIN)
+========================= */
 const { data: { session } } = await supabase.auth.getSession();
-
 if (!session) {
   location.replace("login.html");
 }
 
-// ✅ Logout button (lockout)
-const logoutBtn = document.getElementById("lo");
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn("signOut error:", e);
-    }
-    // κράτα contest/localStorage state αν θέλεις, αλλά καθάρισε μόνο το session
-    localStorage.removeItem("session");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
-    location.replace("login.html");
-  });
+/* =========================
+   LOAD ACTIVE CONTEST
+========================= */
+async function loadActiveContest() {
+  const { data, error } = await supabase
+    .from("contests")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error("Contest load error:", error);
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    document.getElementById("contestStatus").innerText = "Δεν υπάρχει ενεργός διαγωνισμός";
+    return;
+  }
+
+  const contest = data[0];
+
+  // Εμφάνιση στο dashboard
+  document.getElementById("contestCode").innerText = contest.code ?? "-";
+  document.getElementById("contestRound").innerText = contest.round ?? "-";
+  document.getElementById("contestStatus").innerText =
+    contest.active ? "Ενεργός" : "Ανενεργός";
 }
+
+loadActiveContest();
 </script>
 
 </body>
 </html>
-
