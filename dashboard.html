@@ -43,7 +43,7 @@ background:rgba(0,0,0,.18);padding:12px;margin-top:12px}
 select{padding:8px;border-radius:10px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.18)}
 h1{margin:0}
 
-/* ✅ Inline notification (αντί για toast) */
+/* ✅ Inline notification */
 .notice{
   display:none;
   border:1px solid var(--b);
@@ -71,7 +71,6 @@ h1{margin:0}
     <div class="pill" id="roundInfo">Αγωνιστική:-</div>
   </div>
 
-  <!-- ✅ Επαγγελματικό feedback (αντί toast) -->
   <div id="notice" class="notice"></div>
 
   <div class="box">
@@ -80,7 +79,6 @@ h1{margin:0}
     </div>
   </div>
 
-  <!-- ✅ ΜΗΝΥΜΑ: νέος χρήστης ενώ ξεκίνησε ο διαγωνισμός -->
   <div class="box" id="blockedBox"
        style="display:none;border-color:rgba(231,76,60,.45);background:rgba(231,76,60,.14)">
     <div class="pill">⛔ Ο διαγωνισμός έχει ήδη ξεκινήσει</div>
@@ -95,10 +93,12 @@ h1{margin:0}
       <button class="btn r" id="lockBtn" type="button">🔒 Κλείδωμα προβλέψεων</button>
       <div class="pill" id="lockState">Κατάσταση: -</div>
       <div class="pill" id="dlPill">Deadline:-</div>
+
+      <!-- ✅ SPANS -->
       <div class="pill">Contest: <b><span id="contestCode">-</span></b></div>
       <div class="pill">Αγωνιστική: <b><span id="contestRound">-</span></b></div>
       <div class="pill">Status: <b><span id="contestStatus">-</span></b></div>
-
+      <!-- ✅ /SPANS -->
     </div>
 
     <div class="row" style="margin-top:10px">
@@ -130,7 +130,6 @@ const W=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const now=()=>Date.now();
 const sess=()=>R(K.S,null);
 
-/* ✅ Inline notifications (αντί toast) */
 function N(msg, type='warn'){
   const el = $('notice');
   if(!el) return;
@@ -148,17 +147,6 @@ function N(msg, type='warn'){
   clearTimeout(window.__n);
   window.__n = setTimeout(()=>N(''), 2600);
 }
-
-/* ✅ PROFESSIONAL GUARD */
-(function guard(){
-  const s = sess();
-  if(!s || !s.username){
-    location.href='login.html';
-    return;
-  }
-
-
-$('lo').onclick=()=>{ localStorage.removeItem(K.S); location.href='login.html'; };
 
 /* deadline = 10 λεπτά πριν τον πρώτο ON αγώνα */
 function deadlineMsFromMatches(arr){
@@ -237,7 +225,6 @@ function setWarn(cid,u,v){
   all[warnKey(cid,u)]=Number(v)||0; W(K.WARN,all);
 }
 
-/* Validate lock */
 function canLockAllPicks(cid,u,matches){
   const map=getMyMap(cid,u);
   for(const m of matches){
@@ -250,7 +237,7 @@ function canLockAllPicks(cid,u,matches){
   return true;
 }
 
-/* ✅ GO PAY (Acode-safe) */
+/* ✅ GO PAY */
 function goPay(){
   const s=sess();
   const active=R(K.A,null);
@@ -260,7 +247,6 @@ function goPay(){
   const timeLocked = (dl && now()>=dl);
   const userLocked = (s && cid) ? isLocked(cid,s.username) : false;
 
-  // ✅ block new user after contest started
   const meta = (cid ? (R(K.META,{})[cid]||{}) : {});
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
@@ -283,8 +269,7 @@ function goPay(){
   const tries = [
     'pay.html',
     './pay.html',
-    (location.origin ? (location.origin + '/pay.html') : null),
-    'http://localhost:8158/pay.html'
+    (location.origin ? (location.origin + '/pay.html') : null)
   ].filter(Boolean);
 
   let i = 0;
@@ -308,7 +293,6 @@ function toggleHelp(cid,u,mid){
   if(dl && now()>=dl) return N('🔒 Έκλεισε ο χρόνος','err');
   if(isLocked(cid,u)) return N('🔒 Έχεις κλειδώσει τις προβλέψεις σου','err');
 
-  // ✅ block new user after contest started
   const meta = (R(K.META,{})[cid]||{});
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
@@ -322,7 +306,6 @@ function toggleHelp(cid,u,mid){
   const rec=ensureHelpRec(cid,u);
   if(!isHelpPurchased(rec)) return N('💶 Πρέπει πρώτα να αγοράσεις HELP (€1,99)','warn');
 
-  // Cancel
   if(rec.usedMatchIds.includes(mid)){
     rec.usedMatchIds=rec.usedMatchIds.filter(x=>x!==mid);
     rec.remaining++;
@@ -332,7 +315,6 @@ function toggleHelp(cid,u,mid){
     return render();
   }
 
-  // Apply
   if(rec.remaining<=0) return N('⛔ Δεν έχεις άλλο HELP (έβαλες ήδη 3).','err');
   rec.remaining--;
   rec.usedMatchIds.push(mid);
@@ -351,7 +333,6 @@ function onLockBtn(cid,u,matches){
   const timeLocked = (dl && now()>=dl);
   if(timeLocked) return N('🔒 Έκλεισε ο χρόνος','err');
 
-  // ✅ block new user after contest started
   const meta = (R(K.META,{})[cid]||{});
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
@@ -366,7 +347,7 @@ function onLockBtn(cid,u,matches){
     return render();
   }
   if(!canLockAllPicks(cid,u,matches)){
-    return N('⛔ Δεν κλειδωσες πρόβλεψη για όλα τα παιχνίδια της αγωνιστικής','err');
+    return N('⛔ Δεν κλείδωσες πρόβλεψη για όλα τα παιχνίδια της αγωνιστικής','err');
   }
   setLocked(cid,u,true);
   N('✅ Κλείδωσες τις προβλέψεις σου','ok');
@@ -380,7 +361,6 @@ function onSavePick(cid,u,mid){
   if(dl && now()>=dl) return N('🔒 Έκλεισε ο χρόνος','err');
   if(isLocked(cid,u)) return N('🔒 Έχεις κλειδώσει τις προβλέψεις σου','err');
 
-  // ✅ block new user after contest started
   const meta = (R(K.META,{})[cid]||{});
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
@@ -416,18 +396,34 @@ function onSavePick(cid,u,mid){
 function render(){
   const s=sess();
   if(!s) return location.href='login.html';
- 
 
   $('userPill').textContent='Χρήστης: '+s.username;
 
   const active=R(K.A,null);
-  if(!active){ $('matches').innerHTML='<div class="pill">Δεν υπάρχει διαγωνισμός</div>'; return; }
+  if(!active){
+    $('matches').innerHTML='<div class="pill">Δεν υπάρχει διαγωνισμός</div>';
+    $('contestInfo').textContent='Contest:-';
+    $('roundInfo').textContent='Αγωνιστική:-';
+    $('prizeText').textContent='-';
+    $('contestCode').textContent='-';
+    $('contestRound').textContent='-';
+    $('contestStatus').textContent='-';
+    $('dlPill').textContent='Deadline:-';
+    $('lockState').textContent='Κατάσταση: -';
+    return;
+  }
+
   const cid=active.id;
 
   const meta=R(K.META,{})[cid]||{};
   $('contestInfo').textContent='Contest: '+cid;
   $('roundInfo').textContent='Αγωνιστική: '+(meta.round||1);
   $('prizeText').textContent=(String(meta.prizeText||'').trim() || '-');
+
+  // ✅ spans
+  $('contestCode').textContent = cid;
+  $('contestRound').textContent = (meta.round ?? 1);
+  $('contestStatus').textContent = (meta.contestStarted ? 'Ενεργός' : 'Ανενεργός');
 
   const matches=R(K.M,[]);
   const dl=deadlineMsFromMatches(matches);
@@ -436,7 +432,6 @@ function render(){
   const timeLocked = (dl && now()>=dl);
   const userLocked = isLocked(cid,s.username);
 
-  // ✅ block new user after contest started
   const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(s.username||'').toLowerCase();
@@ -445,7 +440,6 @@ function render(){
 
   const effectiveLocked = blocked || timeLocked || userLocked;
 
-  // ✅ ΑΓΟΡΑ
   $('buyBtn').onclick = ()=> goPay();
 
   const recUI=ensureHelpRec(cid,s.username);
@@ -529,6 +523,8 @@ function render(){
 /* expose for inline onclick */
 window.onSavePick = onSavePick;
 window.toggleHelp = toggleHelp;
+window.render = render;
+window.CMP = { K, R, W, N, render };
 
 /* notice on return from pay */
 (function(){
@@ -541,47 +537,31 @@ window.toggleHelp = toggleHelp;
 
 render();
 </script>
+
 <script type="module">
 import { supabase } from "./supabase.js";
 
-/* =========================
-   PROTECT DASHBOARD (LOGIN)
-========================= */
+/* ✅ Supabase session guard + sync -> localStorage session
+   (Δεν τραβάμε contests από Supabase εδώ — για να μην έχεις mismatch.) */
+const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+
 const { data: { session } } = await supabase.auth.getSession();
-if (!session) {
+if(!session || !session.user){
   location.replace("login.html");
+  throw new Error("Not logged in");
 }
 
-/* =========================
-   LOAD ACTIVE CONTEST
-========================= */
-async function loadActiveContest() {
-  const { data, error } = await supabase
-    .from("contests")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(1);
+const email = String(session.user.email || "").toLowerCase();
+const username = (email.split("@")[0] || "user").trim();
+const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
+localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
 
-  if (error) {
-    console.error("Contest load error:", error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    document.getElementById("contestStatus").innerText = "Δεν υπάρχει ενεργός διαγωνισμός";
-    return;
-  }
-
-  const contest = data[0];
-
-  // Εμφάνιση στο dashboard
-  document.getElementById("contestCode").innerText = contest.code ?? "-";
-  document.getElementById("contestRound").innerText = contest.round ?? "-";
-  document.getElementById("contestStatus").innerText =
-    contest.active ? "Ενεργός" : "Ανενεργός";
-}
-
-loadActiveContest();
+/* ✅ Logout: supabase + localStorage */
+document.getElementById("lo").addEventListener("click", async () => {
+  try { await supabase.auth.signOut(); } catch(e) {}
+  localStorage.removeItem("session");
+  location.replace("login.html");
+});
 </script>
 
 </body>
