@@ -9,7 +9,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
  * Αν το key είναι λάθος/κομμένο, θα παίρνεις 401 (Invalid API key) σε login/register.
  */
 const DEFAULT_SUPABASE_URL = "https://nljrwvrmhlrpdgeougpk.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
+const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_I0PqYv3fuLS8cE8hxftelA_U1_huEzN";
 
 // Προαιρετικά: μπορείς να κάνεις override από localStorage (για δοκιμές)
 const SUPABASE_URL = localStorage.getItem("CMP_SUPABASE_URL") || DEFAULT_SUPABASE_URL;
