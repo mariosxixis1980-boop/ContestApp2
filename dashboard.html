@@ -247,7 +247,6 @@ function goPay(){
   const userLocked = (s && cid) ? isLocked(cid,s.username) : false;
 
   const meta = (cid ? (R(K.META,{})[cid]||{}) : {});
-  const started = meta.contestStarted===true;
   const elig = Array.isArray(meta.eligibleUsers)?meta.eligibleUsers:[];
   const me = String(s?.username||'').toLowerCase();
 
@@ -434,6 +433,33 @@ function render(){
   $('contestRound').textContent = (meta.round ?? 1);
   $('contestStatus').textContent = (meta.contestStarted ? 'Ενεργός' : 'Ανενεργός');
 
+  // ✅ 4) ΜΗΝ φαίνεται contest στον πελάτη πριν πατήσει ο admin «Κλείδωμα διαγωνισμού (Έναρξη)»
+  const started = (meta.contestStarted===true);
+  const matchesLockedByAdmin = (meta.matchesLocked===true);
+
+  if(!started){
+    $('blockedBox').style.display = 'none';
+    $('dlPill').textContent = 'Deadline: -';
+    $('lockState').textContent = 'Κατάσταση: ⏳ Αναμονή (δεν ξεκίνησε)';
+    $('helpPill').textContent = 'HELP: -';
+    $('buyBtn').disabled = true;
+    $('lockBtn').disabled = true;
+    $('matches').innerHTML = `<div class="pill">⏳ Αναμονή — ο διαγωνισμός δεν έχει ξεκινήσει ακόμα.</div>`;
+    return;
+  }
+
+  // ✅ 1) ΜΗΝ φαίνονται τα παιχνίδια μέχρι να τα «κλειδώσει» ο admin (matchesLocked)
+  if(!matchesLockedByAdmin){
+    $('blockedBox').style.display = 'none';
+    $('dlPill').textContent = 'Deadline: -';
+    $('lockState').textContent = 'Κατάσταση: ⏳ Αναμονή (ο admin ετοιμάζει αγώνες)';
+    $('helpPill').textContent = 'HELP: -';
+    $('buyBtn').disabled = true;
+    $('lockBtn').disabled = true;
+    $('matches').innerHTML = `<div class="pill">⏳ Αναμονή — ο admin ετοιμάζει τους αγώνες για την αγωνιστική ${meta.round ?? 1}.</div>`;
+    return;
+  }
+
   const matches=R(K.M,[]);
   const dl=deadlineMsFromMatches(matches);
   $('dlPill').textContent='Deadline: '+(dl?fmt(dl):'-');
@@ -492,7 +518,13 @@ function render(){
 
   const myMap=getMyMap(cid,s.username);
 
-  $('matches').innerHTML = (Array.isArray(matches)&&matches.length)? matches.map(m=>{
+  // ✅ 3) Αν έγινε Next Round και δεν υπάρχουν αγώνες, να δείχνει «Αναμονή για αγωνιστική Χ»
+  if(!Array.isArray(matches) || !matches.length){
+    $('matches').innerHTML = `<div class="pill">⏳ Αναμονή για αγωνιστική ${meta.round ?? 1}…</div>`;
+    return;
+  }
+
+  $('matches').innerHTML = matches.map(m=>{
     const saved=(myMap?.[m.id]?.pick||'').trim();
     const helpOn = hasHelp(cid,s.username,m.id) || saved==='HELP';
     const off = (m.off===true);
@@ -530,7 +562,7 @@ function render(){
         <div class="mini"><b>Η πρόβλεψή σου:</b> ${saved||'-'}</div>
       `:''}
     </div>`;
-  }).join('') : '<div class="pill">Δεν υπάρχουν αγώνες ακόμα.</div>';
+  }).join('');
 }
 
 /* expose for inline onclick */

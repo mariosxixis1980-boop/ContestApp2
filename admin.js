@@ -563,6 +563,35 @@ function lockFinalResults() {
   if (!confirm("Θες να τα ελέγξεις ξανά;")) return;
   if (!confirm("Είναι ΟΛΑ σωστά;")) return;
 
+  // ✅ 2) Αν κάποιος χρήστης ΔΕΝ κλείδωσε τις προβλέψεις του,
+  // να ΜΗΝ θεωρείται ότι έπαιξε: auto OFF + auto lock.
+  (function forceOffForUnlockedUsers(){
+    const picksAll = R(K.P, {});
+    const cp = (picksAll && picksAll[cid] && typeof picksAll[cid]==='object') ? picksAll[cid] : {};
+
+    const locks = R(K.LOCK, {});
+    locks[cid] = locks[cid] || {};
+
+    let changed = false;
+    for (const u of Object.keys(cp)){
+      if (locks[cid][u]) continue;
+      // δεν κλείδωσε -> θεωρείται ότι ΔΕΝ έπαιξε
+      cp[u] = cp[u] || {};
+      for (const m of matches){
+        if (!m) continue;
+        cp[u][m.id] = { pick: 'OFF', ts: now() };
+      }
+      locks[cid][u] = true;
+      changed = true;
+    }
+
+    if (changed){
+      picksAll[cid] = cp;
+      W(K.P, picksAll);
+      W(K.LOCK, locks);
+    }
+  })();
+
   setMeta(cid, { resultsLocked: true });
 
   const perWeek = computeWeekScores();

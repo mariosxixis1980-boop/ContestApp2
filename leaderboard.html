@@ -231,6 +231,7 @@ const KEY_SESSION='session',
       KEY_SCORES_TOTAL='scores',
       KEY_SCORES_BY_CONTEST='scoresByContest',
       KEY_META='contestMeta',
+      KEY_LOCK='picksLocked',
       KEY_TIE_STATS='tieStatsByContest';
 
 const $=id=>document.getElementById(id);
@@ -264,6 +265,16 @@ function getMetaForContest(contestId){
   return (all&&typeof all==='object')?(all[contestId]||null):null;
 }
 
+function lockAll(){
+  const all = readJSON(KEY_LOCK,{});
+  return (all && typeof all==='object') ? all : {};
+}
+function isUserLocked(cid,u){
+  const user = String(u||'').trim();
+  if(!cid || !user) return false;
+  return !!(lockAll()?.[cid]?.[user]);
+}
+
 /* Tie Stats */
 function getTieStats(cid){
   const all=readJSON(KEY_TIE_STATS,{});
@@ -273,6 +284,9 @@ function getTieStats(cid){
 
 /* ✅ NEW: Live points for CURRENT ROUND (from matches+picks, not from scoresByContest) */
 function computeLiveRoundPointsForUser(username, contestId){
+  // ✅ Αν ο χρήστης ΔΕΝ κλείδωσε τις προβλέψεις του, δεν θεωρείται ότι "έπαιξε".
+  if(!isUserLocked(contestId, username)) return 0;
+
   const matches=readJSON(KEY_MATCHES,[]);
   const allPicks=readJSON(KEY_PICKS,{});
   const cp=(allPicks&&allPicks[contestId])?allPicks[contestId]:{};
@@ -306,6 +320,11 @@ function computeLiveRoundPointsForUser(username, contestId){
 }
 
 function computeBreakdownForUser(username, contestId){
+  const locked = isUserLocked(contestId, username);
+  if(!locked){
+    return { locked:false, points:0, correct:0, help:0, offHelp:0, bonus:0, req:0, ok:0 };
+  }
+
   const matches=readJSON(KEY_MATCHES,[]);
   const allPicks=readJSON(KEY_PICKS,{});
   const cp=(allPicks&&allPicks[contestId])?allPicks[contestId]:{};
@@ -474,13 +493,14 @@ function render(){
 
   if(!isAdmin){
     // ✅ Live current round points (from matches/picks)
-    const myRoundPts = (cid==='-') ? 0 : computeLiveRoundPointsForUser(sess.username, cid);
+    const myLocked = (cid==='-') ? false : isUserLocked(cid, sess.username);
+    const myRoundPts = (!myLocked || cid==='-') ? 0 : computeLiveRoundPointsForUser(sess.username, cid);
 
     // ✅ Contest + Total (stored)
     const myContestPts=Number(perContest?.[sess.username] ?? 0);
     const myTotalPts=Number(scoresTotal?.[sess.username] ?? 0);
 
-    $('myRoundPts').textContent=String(myRoundPts);
+    $('myRoundPts').textContent = (cid==='-') ? '-' : (myLocked ? String(myRoundPts) : '-');
     $('myContestPts').textContent=String(myContestPts);
     $('myTotalPts').textContent=String(myTotalPts);
 
@@ -493,6 +513,11 @@ function render(){
 
     if(cid==='-'){
       $('breakdown').innerHTML=`<div class="pill">Δεν υπάρχει ενεργός διαγωνισμός.</div>`;
+    }else if(!myLocked){
+      $('breakdown').innerHTML=`
+        <div class="pill amber">⚠️ Δεν έχεις κλειδώσει τις προβλέψεις σου για αυτή την αγωνιστική.</div>
+        <div class="mini" style="margin-top:8px">Μόλις πατήσεις «Κλείδωμα προβλέψεων» στο Dashboard, θα εμφανιστούν εδώ οι πόντοι.</div>
+      `;
     }else{
       const b=computeBreakdownForUser(sess.username,cid);
       $('breakdown').innerHTML=`
