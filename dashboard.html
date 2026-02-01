@@ -434,9 +434,25 @@ function render(){
   $('contestRound').textContent = (meta.round ?? 1);
   $('contestStatus').textContent = (meta.contestStarted ? 'Ενεργός' : 'Ανενεργός');
 
+  // ✅ Οι αγώνες φαίνονται στον πελάτη ΜΟΝΟ όταν:
+  // - ο admin έκανε «Κλείδωμα διαγωνισμού (Έναρξη)» (contestStarted=true)
+  // - ο admin κλείδωσε τη λίστα αγώνων (matchesLocked=true)
+  const published = (meta.contestStarted===true) && (meta.matchesLocked===true);
+
   const matches=R(K.M,[]);
-  const dl=deadlineMsFromMatches(matches);
+  const dl = published ? deadlineMsFromMatches(matches) : null;
   $('dlPill').textContent='Deadline: '+(dl?fmt(dl):'-');
+
+  // Αν δεν έχει δημοσιευθεί, δείξε «Αναμονή» και ΜΗΝ εμφανίζεις αγώνες
+  if(!published){
+    $('blockedBox').style.display = 'none';
+    $('buyBtn').disabled = true;
+    $('lockBtn').disabled = true;
+    $('helpPill').textContent = 'HELP: -';
+    $('lockState').textContent = 'Κατάσταση: ⏳ Αναμονή (δεν δημοσιεύτηκε)';
+    $('matches').innerHTML = '<div class="pill">⏳ Αναμονή — οι αγώνες δεν έχουν δημοσιευτεί ακόμα. (Ο admin πρέπει να κλειδώσει διαγωνισμό + αγώνες)</div>';
+    return;
+  }
 
   const timeLocked = (dl && now()>=dl);
   const userLocked = isLocked(cid,s.username);
