@@ -179,38 +179,51 @@ async function assertSupabaseWorks() {
     }
 
     function renderNextContest(){
+      const box = byId("nextBox");
       const raw = String(localStorage.getItem(KEY_NEXT) || "");
       const iso = raw.replace(/"/g,"").trim();
-      const pretty = fmtDateGreek(iso);
 
-      if(pretty){
-        byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
-        byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
-      }else{
+      // Αν δεν υπάρχει ημερομηνία -> δείξε απλά μήνυμα
+      if(!iso){
+        if(box) box.style.display = "block";
         byId("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
-        byId("nextSub").textContent = "Ο admin θα βάλει ημερομηνία από το Admin Panel.";
+        byId("nextSub").textContent = "";
+        return;
       }
+
+      const ms = Date.parse(iso);
+      if(!Number.isFinite(ms)){
+        if(box) box.style.display = "block";
+        byId("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
+        byId("nextSub").textContent = "";
+        return;
+      }
+
+      const nowMs = Date.now();
+      // ✅ Αν πέρασε (ή είναι τώρα/σήμερα) -> κρύψε το box
+      if(ms <= nowMs){
+        if(box) box.style.display = "none";
+        return;
+      }
+
+      const pretty = fmtDateGreek(iso);
+      if(box) box.style.display = "block";
+      byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
+      byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
     }
+
 
     
     async function showAlreadyLoggedIn(session){
-	    // Δείξε μήνυμα + κουμπιά αντί για auto redirect
-	    const box = byId("alreadyLoggedInBox");
-	    const msg = byId("alreadyLoggedInMsg");
-	    if(msg) msg.textContent = "✅ Είσαι ήδη συνδεδεμένος. Διάλεξε πού να πας ή κάνε logout.";
-	    if(box) box.classList.remove("hide");
-
-	    const goAdminBtn = byId("goAdminBtn");
-	    const goClientBtn = byId("goClientBtn");
-	    const doLogoutBtn = byId("doLogoutBtn");
-
-	    if(goAdminBtn) goAdminBtn.onclick = async () => { await goAfterLogin(session); };
-	    if(goClientBtn) goClientBtn.onclick = () => { location.href = "dashboard.html"; };
-	    if(doLogoutBtn) doLogoutBtn.onclick = async () => {
-	      try { await supabase.auth.signOut(); } catch(e){ console.warn(e); }
-	      location.reload();
-	    };
+      // ✅ Αν είσαι ήδη συνδεδεμένος, ΔΕΝ μένουμε στο login.
+      // Πάμε αυτόματα στο σωστό panel (Admin ή Πελάτης).
+      try{
+        goAfterLogin(session);
+      }catch(e){
+        location.replace("dashboard.html");
+      }
     }
+
 
 function showLogin(){
       clearMsgs();
