@@ -197,11 +197,30 @@ async function assertSupabaseWorks() {
       setInlineMsg("regErr","");
     }
 
+    // Accepts either "YYYY-MM-DD" or full ISO like "YYYY-MM-DDTHH:mm:ssZ"
     function fmtDateGreek(isoDate){
-      const s = String(isoDate||"").trim();
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-      const [yy,mm,dd] = s.split("-");
+      const s0 = String(isoDate || "").trim();
+      if(!s0 || s0 === "null" || s0 === "undefined") return null;
+
+      // If it's exactly YYYY-MM-DD
+      if(/^\d{4}-\d{2}-\d{2}$/.test(s0)){
+        const [yy,mm,dd] = s0.split("-");
+        return `${dd}/${mm}/${yy}`;
+      }
+
+      // Otherwise, try parsing as Date (ISO with time)
+      const d = new Date(s0);
+      if(isNaN(d.getTime())) return null;
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yy = d.getFullYear();
       return `${dd}/${mm}/${yy}`;
+    }
+
+    // In the "localStorage only" version this may not exist.
+    // Keep a safe fallback so the login page doesn't throw.
+    async function fetchActiveContest(){
+      return null;
     }
 
     function renderNextContest(){
@@ -232,7 +251,7 @@ async function assertSupabaseWorks() {
         return;
       }
 
-      const pretty = fmtDateGreek(iso);
+      const pretty = fmtDateGreek(iso) || String(iso||"").slice(0,10) || "(δεν ορίστηκε)";
       if(box) box.style.display = "block";
       byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
       byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
