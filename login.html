@@ -356,7 +356,8 @@ if (!cfg.ok) {
         clearMsgs();
         const email = String(byId("loginEmail").value || "").trim().toLowerCase();
         if (!email) return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const { error } = const redirectTo = location.origin + location.pathname.replace(/[^\/]*$/, '') + "reset.html";
+      await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) return setInlineMsg("loginErr", "Reset error: " + (error.message || String(error)));
         setInlineMsg("loginOk", "✅ Στάλθηκε email για reset password (αν το email υπάρχει).\n");
       });
