@@ -23,6 +23,25 @@
         var(--bg);
       display:flex;align-items:center;justify-content:center;
     }
+
+    /* ✅ Prevent "flash" of login UI before auth check */
+    body.booting .card{display:none;}
+    .boot{
+      width:min(520px, 100%);
+      border:1px solid var(--b);
+      border-radius:18px;
+      padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.04));
+      box-shadow:0 18px 60px rgba(0,0,0,.55);
+      text-align:center;
+    }
+    .spin{
+      width:36px;height:36px;border-radius:999px;margin:12px auto 6px;
+      border:3px solid rgba(255,255,255,.14);
+      border-top-color:rgba(46,204,113,.65);
+      animation:sp 1s linear infinite;
+    }
+    @keyframes sp{to{transform:rotate(360deg)}}
     .card{
       width:min(520px, 100%);
       border:1px solid var(--b);
@@ -63,8 +82,15 @@
     .hide{display:none}
   </style>
 </head>
-<body>
-<div class="card">
+<body class="booting">
+
+  <!-- ✅ Boot screen (prevents 1-frame wrong UI) -->
+  <div class="boot" id="boot">
+    <div style="font-size:18px;font-weight:900;">Cyprus Match Predict</div>
+    <div class="spin" aria-hidden="true"></div>
+    <div class="sub">Φόρτωση...</div>
+  </div>
+<div class="card" id="card">
 <div style="text-align:center;margin-bottom:12px;">
 <div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
 <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾  C.M.P 🇨🇾</div>
@@ -343,9 +369,38 @@ else{
       showLogin();
     }
 // INIT
+    function finishBoot(showUI=true){
+      // hide boot screen + allow UI
+      document.body.classList.remove('booting');
+      const b = byId('boot');
+      if(b) b.style.display = 'none';
+      if(!showUI){
+        const c = byId('card');
+        if(c) c.style.display = 'none';
+      }
+    }
+
     (async () => {
+      // ✅ First: session check. If logged in -> redirect, no flash.
+      try{
+        const { data: { session } } = await supabase.auth.getSession();
+        if(session && session.user){
+          const email = String(session.user.email||'').toLowerCase();
+          const isAdmin = (email === String(ADMIN_EMAIL).toLowerCase());
+          // sync localStorage session used by the rest of the app
+          const username = (email.split('@')[0] || 'user').trim();
+          localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
+          finishBoot(false);
+          return location.replace(isAdmin ? 'admin.html' : 'dashboard.html');
+        }
+      }catch(e){
+        console.warn('getSession init error:', e);
+      }
+
+      // Not logged in -> show login UI
       showLogin();
       renderNextContest();
+      finishBoot(true);
 
 // Quick check: if the publishable (anon) key is wrong you'll get 401/Invalid API key.
 const cfg = await assertSupabaseWorks();
@@ -396,18 +451,20 @@ if (!cfg.ok) {
         });
       });
 
-      const { data: sessData, error } = await supabase.auth.getSession();
-      if (error) console.warn("getSession error:", error);
-
-      // Αν υπάρχει ήδη session, ΔΕΝ κάνουμε auto-redirect (για να μην σε πετάει κατευθείαν στο Admin).
-      // Σου δείχνουμε επιλογές.
-      if (sessData?.session) {
-        await showAlreadyLoggedIn(sessData.session);
-      }
-
+      // Auth state change: after login/logout
       supabase.auth.onAuthStateChange(async (_event, session) => {
-        // Όταν αλλάξει auth state, αν υπάρχει session δείξε επιλογές.
-        if (session) await showAlreadyLoggedIn(session);
+        if(!session){
+          // logged out -> show login UI
+          showLogin();
+          renderNextContest();
+          finishBoot(true);
+          return;
+        }
+        // logged in -> redirect (no intermediate screen)
+        const email = String(session.user?.email||'').toLowerCase();
+        const isAdmin = (email === ADMIN_EMAIL);
+        finishBoot(false);
+        window.location.href = isAdmin ? "admin.html" : "dashboard.html";
       });
 
       console.log("SUPABASE OK");
