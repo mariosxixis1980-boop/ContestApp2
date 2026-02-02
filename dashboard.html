@@ -426,6 +426,48 @@ function render(){
   const cid=active.id;
 
   const meta=R(K.META,{})[cid]||{};
+  // ✅ Visibility rules:
+  // - Αν ο admin ΔΕΝ πάτησε «Κλείδωμα διαγωνισμού (Έναρξη)» => ο πελάτης ΔΕΝ βλέπει contest.
+  // - Αν ο admin ΔΕΝ πάτησε «Κλείδωμα Αγώνων» => ο πελάτης βλέπει μόνο "Αναμονή" (όχι αγώνες).
+  if(meta.contestStarted !== true){
+    $('matches').innerHTML = '<div class="pill">Δεν υπάρχει ενεργός διαγωνισμός</div>';
+    $('contestInfo').textContent = 'Contest:-';
+    $('roundInfo').textContent = 'Αγωνιστική:-';
+    $('prizeText').textContent = '-';
+    $('contestCode').textContent = '-';
+    $('contestRound').textContent = '-';
+    $('contestStatus').textContent = '-';
+    $('dlPill').textContent = 'Deadline: -';
+    $('blockedBox').style.display = 'none';
+    $('buyBtn').disabled = true;
+    $('lockBtn').disabled = true;
+    $('helpPill').textContent = 'HELP: -';
+    $('lockState').textContent = 'Κατάσταση: -';
+    return;
+  }
+
+  const canSee = (meta.matchesLocked === true);
+  if(!canSee){
+    $('contestInfo').textContent = 'Contest: ' + cid;
+    $('roundInfo').textContent = 'Αγωνιστική: ' + (meta.round || 1);
+    $('prizeText').textContent = (String(meta.prizeText||'').trim() || '-');
+
+    $('contestCode').textContent = cid;
+    $('contestRound').textContent = (meta.round ?? 1);
+    $('contestStatus').textContent = 'Αναμονή';
+
+    $('dlPill').textContent = 'Deadline: -';
+    $('blockedBox').style.display = 'none';
+
+    $('buyBtn').disabled = true;
+    $('lockBtn').disabled = true;
+    $('helpPill').textContent = 'HELP: -';
+    $('lockState').textContent = 'Κατάσταση: ⏳ Αναμονή — ο admin ετοιμάζει αγώνες';
+
+    $('matches').innerHTML = `<div class="pill">⏳ Αναμονή: Αγωνιστική ${meta.round||1}. Οι αγώνες θα εμφανιστούν μόλις ο admin κάνει «Κλείδωμα Αγώνων».</div>`;
+    return;
+  }
+
   $('contestInfo').textContent='Contest: '+cid;
   $('roundInfo').textContent='Αγωνιστική: '+(meta.round||1);
   $('prizeText').textContent=(String(meta.prizeText||'').trim() || '-');
@@ -570,53 +612,153 @@ render();
 <script type="module">
 import { supabase } from "./supabase.js";
 
-/* =========================
-   PROTECT DASHBOARD (SUPABASE)
-   - κρατάει το login σωστό
-   - φτιάχνει localStorage session + users
-   - ΔΕΝ πειράζει contest/matches/meta (για να μην σβήνει η λίστα)
-========================= */
+/* =====================================================
+   ✅ BOOT (SUPABASE)
+   1) κρατάει login/session σωστό
+   2) τραβάει τον ΠΡΑΓΜΑΤΙΚΟ published+active contest από Supabase
+   3) κάνει sync -> localStorage (activeContest / contestMatches / contestMeta)
+   ώστε να δουλεύει το υπάρχον render() χωρίς να ξαναγράφουμε όλη την σελίδα
+   4) δείχνει countdown μέχρι deadline (και κάνει update κάθε 1s)
+
+   ΑΠΑΙΤΟΥΜΕΝΑ columns στον πίνακα "contests":
+   - code (text, unique)
+   - active (bool)
+   - published (bool)
+   - meta (json/jsonb)   [προαιρετικό αλλά προτείνεται]
+   - matches (json/jsonb) [προαιρετικό αλλά προτείνεται]
+
+   Αν δεν υπάρχουν meta/matches, η σελίδα θα πέσει σε fallback (localStorage).
+===================================================== */
+
+const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+
+const K = {
+  S:'session',A:'activeContest',M:'contestMatches',META:'contestMeta'
+};
+
+const R = (k,f)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(f)); }catch{ return f; } };
+const W = (k,v)=> localStorage.setItem(k, JSON.stringify(v));
+
+let countdownTimer = null;
+
+function startCountdown(deadlineMs){
+  const dlPill = document.getElementById('dlPill');
+  if(!dlPill) return;
+  if(countdownTimer) clearInterval(countdownTimer);
+  if(!deadlineMs || !Number.isFinite(deadlineMs)) return;
+
+  const tick = ()=>{
+    const now = Date.now();
+    let diff = Math.max(0, deadlineMs - now);
+    const hh = String(Math.floor(diff/3600000)).padStart(2,'0');
+    diff %= 3600000;
+    const mm = String(Math.floor(diff/60000)).padStart(2,'0');
+    diff %= 60000;
+    const ss = String(Math.floor(diff/1000)).padStart(2,'0');
+    dlPill.textContent = `Deadline: ${new Date(deadlineMs).toLocaleString('el-GR')} • ⏳ ${hh}:${mm}:${ss}`;
+  };
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+function deadlineMsFromMatches(arr){
+  const times=(arr||[])
+    .filter(m=>m && m.off!==true)
+    .map(m=>new Date(m.startISO).getTime())
+    .filter(Number.isFinite);
+  if(!times.length) return null;
+  return Math.min(...times) - 10*60*1000;
+}
 
 async function boot(){
+  // 1) session
   const { data, error } = await supabase.auth.getSession();
-  if (error) console.warn("getSession error:", error);
-
+  if (error) console.warn('getSession error:', error);
   const session = data?.session;
-  if (!session || !session.user) {
-    location.replace("login.html");
+  if (!session?.user) {
+    location.replace('login.html');
     return;
   }
 
-  // ✅ local username από email
-  const email = String(session.user.email || "").toLowerCase();
-  const username = (email.split("@")[0] || "user").trim();
-
-  // ✅ admin flag (ίδιο με admin.js)
-  const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
+  // 2) local session για το UI
+  const email = String(session.user.email || '').toLowerCase();
+  const username = (email.split('@')[0] || 'user').trim();
   const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
+  localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
 
-  // ✅ κράτα session που χρησιμοποιεί το app
-  localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
-
-  // ✅ κράτα users list (για να φαίνεται στον admin πίνακα)
+  // 3) users list (για τον admin πίνακα)
   try{
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
     const arr = Array.isArray(users) ? users : [];
-    const exists = arr.some(u => String(u?.username||"").toLowerCase() === username.toLowerCase());
+    const exists = arr.some(u => String(u?.username||'').toLowerCase() === username.toLowerCase());
     if(!exists){
       arr.push({ username, email, isAdmin });
-      localStorage.setItem("users", JSON.stringify(arr));
+      localStorage.setItem('users', JSON.stringify(arr));
     }
   }catch(e){}
 
-  // ✅ Logout: supabase + localStorage
-  const lo = document.getElementById("lo");
+  // 4) logout
+  const lo = document.getElementById('lo');
   if(lo){
-    lo.addEventListener("click", async () => {
+    lo.addEventListener('click', async () => {
       try { await supabase.auth.signOut(); } catch(e) {}
-      localStorage.removeItem("session");
-      location.replace("login.html");
+      localStorage.removeItem('session');
+      location.replace('login.html');
     });
+  }
+
+  // 5) LOAD PUBLISHED+ACTIVE contest από Supabase
+  //    (αν αποτύχει, κρατάμε fallback localStorage)
+  try{
+    const { data: contests, error: cErr } = await supabase
+      .from('contests')
+      .select('code, active, published, meta, matches, created_at, updated_at')
+      .eq('published', true)
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if(cErr){
+      console.warn('Supabase contests load error:', cErr);
+    } else if(contests && contests.length){
+      const c = contests[0];
+      const cid = String(c.code || '').trim();
+
+      // meta/matches μπορεί να είναι null αν δεν έχεις τα columns
+      const meta = (c.meta && typeof c.meta === 'object') ? c.meta : {};
+      const matches = Array.isArray(c.matches) ? c.matches : [];
+
+      // Sync -> localStorage
+      if(cid){
+        W(K.A, { id: cid });
+        W(K.M, matches);
+        const metaAll = R(K.META, {});
+        metaAll[cid] = {
+          ...meta,
+          // σιγουρεύουμε flags για visibility
+          published: true,
+          contestStarted: true
+        };
+        W(K.META, metaAll);
+
+        // countdown
+        const dl = deadlineMsFromMatches(matches);
+        startCountdown(dl);
+      }
+    }
+  }catch(e){
+    console.warn('Supabase published contest fetch failed:', e);
+  }
+
+  // 6) render από το υπάρχον script
+  try{ window.render?.(); }catch(e){}
+
+  // 7) αν έχουμε localStorage matches, βάλε countdown κι εκεί
+  const active = R(K.A, null);
+  const matchesLS = R(K.M, []);
+  if(active?.id && Array.isArray(matchesLS) && matchesLS.length){
+    const dl = deadlineMsFromMatches(matchesLS);
+    startCountdown(dl);
   }
 }
 

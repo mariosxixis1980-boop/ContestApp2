@@ -159,6 +159,58 @@ function setMeta(cid, patch) {
 }
 
 /* =========================
+   ✅ SUPABASE SYNC (published/active)
+   - Ο πελάτης θα βλέπει contest ΜΟΝΟ από Supabase όπου
+     published=true ΚΑΙ active=true
+   - Εδώ κάνουμε mirror το localStorage contest -> Supabase
+   - Αν δεν υπάρχουν οι στήλες/meta/matches στο table contests,
+     θα δεις error στο console (τότε το φτιάχνουμε στο Supabase).
+========================= */
+let __syncTimer = null;
+function queueSync() {
+  clearTimeout(__syncTimer);
+  __syncTimer = setTimeout(() => syncContestToSupabase().catch(() => {}), 450);
+}
+
+async function syncContestToSupabase() {
+  try {
+    if (!active || !active.id) return;
+    const cid = active.id;
+    const mta = getMeta(cid) || {};
+
+    const published = (mta.contestStarted === true) && (mta.matchesLocked === true);
+    const activeFlag = (mta.contestStarted === true);
+
+    // deadline = 10' πριν τον 1ο ON αγώνα
+    const dlMs = deadlineMsFromMatches(matches);
+    const deadlineISO = dlMs ? new Date(dlMs).toISOString() : null;
+
+    const payload = {
+      code: cid,
+      round: Number(mta.round || 1),
+      active: !!activeFlag,
+      published: !!published,
+      prize_text: (mta.prizeText || null),
+      started_at: (mta.startedAt ? new Date(Number(mta.startedAt)).toISOString() : null),
+      deadline_iso: deadlineISO,
+      meta: mta,
+      matches: matches,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("contests")
+      .upsert(payload, { onConflict: "code" });
+
+    if (error) {
+      console.warn("Supabase sync error:", error);
+    }
+  } catch (e) {
+    console.warn("Supabase sync exception:", e);
+  }
+}
+
+/* =========================
    TIME HELPERS
 ========================= */
 function startMs(m) {
@@ -563,35 +615,6 @@ function lockFinalResults() {
   if (!confirm("Θες να τα ελέγξεις ξανά;")) return;
   if (!confirm("Είναι ΟΛΑ σωστά;")) return;
 
-  // ✅ 2) Αν κάποιος χρήστης ΔΕΝ κλείδωσε τις προβλέψεις του,
-  // να ΜΗΝ θεωρείται ότι έπαιξε: auto OFF + auto lock.
-  (function forceOffForUnlockedUsers(){
-    const picksAll = R(K.P, {});
-    const cp = (picksAll && picksAll[cid] && typeof picksAll[cid]==='object') ? picksAll[cid] : {};
-
-    const locks = R(K.LOCK, {});
-    locks[cid] = locks[cid] || {};
-
-    let changed = false;
-    for (const u of Object.keys(cp)){
-      if (locks[cid][u]) continue;
-      // δεν κλείδωσε -> θεωρείται ότι ΔΕΝ έπαιξε
-      cp[u] = cp[u] || {};
-      for (const m of matches){
-        if (!m) continue;
-        cp[u][m.id] = { pick: 'OFF', ts: now() };
-      }
-      locks[cid][u] = true;
-      changed = true;
-    }
-
-    if (changed){
-      picksAll[cid] = cp;
-      W(K.P, picksAll);
-      W(K.LOCK, locks);
-    }
-  })();
-
   setMeta(cid, { resultsLocked: true });
 
   const perWeek = computeWeekScores();
@@ -961,6 +984,9 @@ function render() {
   renderPrize();
   renderMatches();
   renderNextStart();
+
+  // ✅ mirror state to Supabase (debounced)
+  queueSync();
 }
 
 /* =========================
