@@ -666,71 +666,105 @@ async function boot(){
   // 1) session
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn('getSession error:', error);
-  // 5) Φόρτωσε / δημιούργησε user row από public.users (για is_admin)
+  const session = data?.session;
+  if (!session?.user) {
+    location.replace('login.html');
+    return;
+  }
+
+  // 2) local session για το UI (με is_admin από DB)
+  const email = String(session.user.email || '').toLowerCase();
+  let username = (email.split('@')[0] || 'user').trim();
   let isAdmin = false;
-  try{
-    const { data: u, error: uErr } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .maybeSingle();
 
-    if(uErr){
-      // Αν δεν υπάρχει policy/άδεια, μην κολλάει το app
-      console.warn('users select error:', uErr);
-    }
+  const { data: prof, error: profErr } = await supabase
+    .from('profiles')
+    .select('username, is_admin')
+    .eq('id', session.user.id)
+    .maybeSingle();
 
-    if(!u){
-      const { error: insErr } = await supabase
-        .from('users')
-        .insert({ id: user.id, email: user.email, is_admin: false });
-
-      if(insErr) console.warn('users insert error:', insErr);
-      isAdmin = false;
-    }else{
-      isAdmin = !!u.is_admin;
-    }
-  }catch(e){
-    console.warn('users fetch failed:', e);
+  if (profErr) {
+    console.warn('profile fetch error:', profErr);
+  } else if (!prof) {
+    // αν λείπει προφίλ, δημιουργούμε ένα ασφαλές default
+    const ins = await supabase.from('profiles').insert([{
+      id: session.user.id,
+      username,
+      email,
+      is_admin: false
+    }]);
+    if (ins.error) console.warn('profile insert error:', ins.error);
+  } else {
+    if (prof.username) username = prof.username;
+    isAdmin = !!prof.is_admin;
   }
 
-  // 6) Φόρτωσε το τελευταίο contest (με το schema που έχεις: id, title, created_at)
+  localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
+
+  // 3) users list (για τον admin πίνακα)
   try{
-    const { data: c, error: cErr } = await supabase
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const arr = Array.isArray(users) ? users : [];
+    const exists = arr.some(u => String(u?.username||'').toLowerCase() === username.toLowerCase());
+    if(!exists){
+      arr.push({ username, email, isAdmin });
+      localStorage.setItem('users', JSON.stringify(arr));
+    }
+  }catch(e){}
+
+  // 4) logout
+  const lo = document.getElementById('lo');
+  if(lo){
+    lo.addEventListener('click', async () => {
+      try { await supabase.auth.signOut(); } catch(e) {}
+      localStorage.removeItem('session');
+      location.replace('login.html');
+    });
+  }
+
+  // 5) LOAD PUBLISHED+ACTIVE contest από Supabase
+  //    (αν αποτύχει, κρατάμε fallback localStorage)
+  try{
+    const { data: contests, error: cErr } = await supabase
       .from('contests')
-      .select('id,title,created_at')
+      .select('code, active, published, meta, matches, created_at, updated_at')
+      .eq('published', true)
+      .eq('active', true)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if(cErr) console.warn('contests select error:', cErr);
+    if(cErr){
+      console.warn('Supabase contests load error:', cErr);
+    } else if(contests && contests.length){
+      const c = contests[0];
+      const cid = String(c.code || '').trim();
 
-    if(c?.id){
-      const cid = c.id;
-      // Sync -> localStorage (ώστε τα υπόλοιπα pages να ξέρουν ποιο contest είναι active)
-      W(K.A, { id: cid, title: c.title || 'Contest' });
+      // meta/matches μπορεί να είναι null αν δεν έχεις τα columns
+      const meta = (c.meta && typeof c.meta === 'object') ? c.meta : {};
+      const matches = Array.isArray(c.matches) ? c.matches : [];
 
-      // Δεν έχουμε matches/meta columns στο table σου ακόμη, άρα κράτα τα άδεια για να μην σπάει
-      W(K.M, []);
+      // Sync -> localStorage
+      if(cid){
+        W(K.A, { id: cid });
+        W(K.M, matches);
+        const metaAll = R(K.META, {});
+        metaAll[cid] = {
+          ...meta,
+          // σιγουρεύουμε flags για visibility
+          published: true,
+          contestStarted: true
+        };
+        W(K.META, metaAll);
 
-      const metaAll = R(K.META, {});
-      metaAll[cid] = {
-        published: true,
-        contestStarted: true
-      };
-      W(K.META, metaAll);
-
-      // Χωρίς matches δεν τρέχει countdown
-      try{ startCountdown(null); }catch(e){}
-    }else{
-      // Αν δεν υπάρχει κανένα contest ακόμη
-      W(K.A, null);
-      W(K.M, []);
-      try{ startCountdown(null); }catch(e){}
+        // countdown
+        const dl = deadlineMsFromMatches(matches);
+        startCountdown(dl);
+      }
     }
   }catch(e){
-    console.warn('Supabase contests fetch failed:', e);
+    console.warn('Supabase published contest fetch failed:', e);
   }
+
   // 6) render από το υπάρχον script
   try{ window.render?.(); }catch(e){}
 
