@@ -727,9 +727,8 @@ async function boot(){
   try{
     const { data: contests, error: cErr } = await supabase
       .from('contests')
-      .select('code, active, published, meta, matches, created_at, updated_at')
-      .eq('published', true)
-      .eq('active', true)
+      // Table σου έχει μόνο: id, title, created_at
+      .select('id, title, created_at')
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -737,27 +736,23 @@ async function boot(){
       console.warn('Supabase contests load error:', cErr);
     } else if(contests && contests.length){
       const c = contests[0];
-      const cid = String(c.code || '').trim();
+      // Χρησιμοποιούμε το title σαν "code". Αν δεν έχει title, χρησιμοποιούμε το id.
+      const cid = String((c.title ?? c.id) || '').trim();
 
-      // meta/matches μπορεί να είναι null αν δεν έχεις τα columns
-      const meta = (c.meta && typeof c.meta === 'object') ? c.meta : {};
-      const matches = Array.isArray(c.matches) ? c.matches : [];
-
-      // Sync -> localStorage
       if(cid){
+        // ΜΟΝΟ sync το active contest id. Δεν πειράζουμε matches/meta γιατί τα columns δεν υπάρχουν στη DB σου.
         W(K.A, { id: cid });
-        W(K.M, matches);
+
+        // Αν υπάρχει ήδη meta στο localStorage, απλά βάζουμε published/started για να φαίνεται.
         const metaAll = R(K.META, {});
         metaAll[cid] = {
-          ...meta,
-          // σιγουρεύουμε flags για visibility
+          ...(metaAll[cid] || {}),
           published: true,
           contestStarted: true
         };
         W(K.META, metaAll);
+      }
 
-        // countdown
-        const dl = deadlineMsFromMatches(matches);
         startCountdown(dl);
       }
     }

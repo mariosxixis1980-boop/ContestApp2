@@ -358,7 +358,8 @@ async function doLogin(){
       }
 
       // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
-      const isAdmin = (email === );
+        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
+        const isAdmin = ADMIN_EMAILS.includes(email);
 
       // 1) Create auth user
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -420,7 +421,8 @@ async function doLogin(){
         const { data: { session } } = await supabase.auth.getSession();
         if(session && session.user){
           const email = String(session.user.email||'').toLowerCase();
-          const isAdmin = (email === String().toLowerCase());
+        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
+        const isAdmin = ADMIN_EMAILS.includes(email);
           // sync localStorage session used by the rest of the app
           const username = (email.split('@')[0] || 'user').trim();
           localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
@@ -496,7 +498,8 @@ if (!cfg.ok) {
         }
         // logged in -> redirect (no intermediate screen)
         const email = String(session.user?.email||'').toLowerCase();
-        const isAdmin = (email === );
+        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
+        const isAdmin = ADMIN_EMAILS.includes(email);
         finishBoot(false);
         window.location.href = isAdmin ? "admin.html" : "dashboard.html";
       });

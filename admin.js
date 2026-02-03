@@ -36,11 +36,6 @@ try {
   window.location.href = "dashboard.html";
 }
 
-const isAdmin = email === String('').toLowerCase();
-
-// ✅ store the session used by the rest of the app
-localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
-
 /* =========================
    admin.js (FULL FILE)
    - localStorage-driven contest engine
