@@ -709,8 +709,7 @@ async function boot(){
     if(!exists){
       arr.push({ username, email, isAdmin });
       localStorage.setItem('users', JSON.stringify(arr));
-    }
-  }catch(e){}
+  } catch(e){}
 
   // 4) logout
   const lo = document.getElementById('lo');
@@ -740,8 +739,8 @@ async function boot(){
       const cid = String((c.title ?? c.id) || '').trim();
 
       if(cid){
-        // ΜΟΝΟ sync το active contest id. Δεν πειράζουμε matches/meta γιατί τα columns δεν υπάρχουν στη DB σου.
-        W(K.A, { id: cid });
+        // Αποθηκεύουμε object (όχι σκέτο string), γιατί πιο κάτω το app περιμένει active.id
+        W(K.A, { id: cid, title: c.title || 'Contest' });
 
         // Αν υπάρχει ήδη meta στο localStorage, απλά βάζουμε published/started για να φαίνεται.
         const metaAll = R(K.META, {});
@@ -753,10 +752,9 @@ async function boot(){
         W(K.META, metaAll);
       }
 
-        startCountdown(dl);
+        // Το countdown/lockout γίνεται πιο κάτω από τα matches/meta που είναι στο localStorage.
       }
-    }
-  }catch(e){
+  } catch(e){
     console.warn('Supabase published contest fetch failed:', e);
   }
 

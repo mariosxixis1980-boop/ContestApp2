@@ -321,11 +321,62 @@ function showLogin(){
   window.location.href = isAdmin ? "admin.html" : "dashboard.html";
 }
 
+  // --- Simple client-side lockout (per browser) ---
+  // 5 failed attempts within 10 minutes => lock for 5 minutes
+  const LOCK_MAX_ATTEMPTS = 5;
+  const LOCK_WINDOW_MS = 10 * 60 * 1000;
+  const LOCK_DURATION_MS = 5 * 60 * 1000;
+
+  function lockKey(email){
+    return "cmp_lock_" + String(email || "").trim().toLowerCase();
+  }
+  function readLock(email){
+    try {
+      const raw = localStorage.getItem(lockKey(email));
+      return raw ? JSON.parse(raw) : null;
+    } catch(e){
+      return null;
+    }
+  }
+  function writeLock(email, obj){
+    try { localStorage.setItem(lockKey(email), JSON.stringify(obj)); } catch(e){}
+  }
+  function clearLock(email){
+    try { localStorage.removeItem(lockKey(email)); } catch(e){}
+  }
+  function getLockoutRemainingMs(email){
+    const s = readLock(email);
+    if(!s || !s.until) return 0;
+    const now = Date.now();
+    return s.until > now ? (s.until - now) : 0;
+  }
+  function registerFailedAttempt(email){
+    const now = Date.now();
+    const s = readLock(email) || {};
+    const first = (s.first && (now - s.first) <= LOCK_WINDOW_MS) ? s.first : now;
+    const count = (s.count && (now - first) <= LOCK_WINDOW_MS) ? (s.count + 1) : 1;
+
+    let until = s.until && s.until > now ? s.until : 0;
+    if(count >= LOCK_MAX_ATTEMPTS){
+      until = now + LOCK_DURATION_MS;
+    }
+    writeLock(email, { first, count, until });
+    return { first, count, until };
+  }
+
 async function doLogin(){
       clearMsgs();
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
       const password = String(byId("loginPass").value || "");
       if(!email || !password) return setInlineMsg("loginErr","Γράψε email και password.");
+
+      // lockout check (client-side)
+      const remaining = getLockoutRemainingMs(email);
+      if(remaining > 0){
+        const sec = Math.ceil(remaining/1000);
+        return setInlineMsg("loginErr", `⛔ Πολλές λάθος προσπάθειες. Δοκίμασε ξανά σε ${sec} δευτ.`);
+      }
+
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if(error){
@@ -334,10 +385,17 @@ async function doLogin(){
   if(status === 401 || /invalid api key/i.test(msg)){
     return setInlineMsg("loginErr","Login error: Invalid API key. Βάλε το σωστό Publishable/Anon public key στο supabase.js (όχι secret).");
   }
+  // register failed attempt (lockout)
+  const st = registerFailedAttempt(email);
+  if(st.until && st.until > Date.now()){
+    const sec = Math.ceil((st.until-Date.now())/1000);
+    return setInlineMsg("loginErr", `⛔ Lockout: δοκίμασε ξανά σε ${sec} δευτ.`);
+  }
   return setInlineMsg("loginErr", `Login error: ${msg}`);
 }
       if(!data?.session) return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
 
+      clearLock(email);
       await goAfterLogin(data.session.user);
     }
 
@@ -358,7 +416,7 @@ async function doLogin(){
       }
 
       // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
-        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
+        const ADMIN_EMAILS = ['mariosxisixis1980@gmail.com'];
         const isAdmin = ADMIN_EMAILS.includes(email);
 
       // 1) Create auth user
@@ -421,7 +479,7 @@ async function doLogin(){
         const { data: { session } } = await supabase.auth.getSession();
         if(session && session.user){
           const email = String(session.user.email||'').toLowerCase();
-        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
+        const ADMIN_EMAILS = ['mariosxisixis1980@gmail.com'];
         const isAdmin = ADMIN_EMAILS.includes(email);
           // sync localStorage session used by the rest of the app
           const username = (email.split('@')[0] || 'user').trim();
@@ -498,7 +556,7 @@ if (!cfg.ok) {
         }
         // logged in -> redirect (no intermediate screen)
         const email = String(session.user?.email||'').toLowerCase();
-        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
+        const ADMIN_EMAILS = ['mariosxisixis1980@gmail.com'];
         const isAdmin = ADMIN_EMAILS.includes(email);
         finishBoot(false);
         window.location.href = isAdmin ? "admin.html" : "dashboard.html";
