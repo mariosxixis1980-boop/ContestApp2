@@ -357,10 +357,9 @@ async function doLogin(){
         username = "user_" + Math.random().toString(36).slice(2,8);
       }
 
-      // Το admin flag ΔΕΝ πρέπει να βασίζεται στο email.
-      // Γίνεται μόνο από τη βάση (profiles.is_admin) και το αλλάζεις εσύ χειροκίνητα.
-
-      // 1) Create auth user
+      // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
+      const isAdmin = isAdminEmail(email);
+// 1) Create auth user
       const { data, error } = await supabase.auth.signUp({ email, password });
       if(error){
         // Supabase errors (π.χ. "User already registered", rate limit, κτλ)
@@ -414,15 +413,45 @@ async function doLogin(){
       }
     }
 
-    (async () => {
+    
+      function showToast(message, type = "info") {
+        try {
+          const el = document.createElement("div");
+          el.textContent = message;
+          el.style.position = "fixed";
+          el.style.left = "50%";
+          el.style.bottom = "24px";
+          el.style.transform = "translateX(-50%)";
+          el.style.padding = "10px 14px";
+          el.style.borderRadius = "10px";
+          el.style.background = "rgba(0,0,0,0.85)";
+          el.style.color = "#fff";
+          el.style.zIndex = "9999";
+          el.style.fontSize = "14px";
+          el.style.maxWidth = "90vw";
+          el.style.textAlign = "center";
+          document.body.appendChild(el);
+          setTimeout(() => el.remove(), 2600);
+        } catch (e) {
+          console.log(message);
+        }
+      }
+
+      (async () => {
+      const FORCE_LOGIN = new URLSearchParams(location.search).get('force') === '1';
+      const ADMIN_EMAIL = 'mariosxixis1980@gmail.com'.toLowerCase();
+      const isAdminEmail = (email) => String(email||'').toLowerCase() === ADMIN_EMAIL;
       // ✅ First: session check. If logged in -> redirect, no flash.
       try{
         const { data: { session } } = await supabase.auth.getSession();
-        if(session && session.user){
-          // Αν υπάρχει session, αποφασίζει η βάση (profiles.is_admin) και γίνεται redirect.
+        if(session && session.user && !FORCE_LOGIN){
+          const email = String(session.user.email||'').toLowerCase();
+          const isAdmin = isAdminEmail(email);
+// sync localStorage session used by the rest of the app
+          const username = (email.split('@')[0] || 'user').trim();
+          localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
           finishBoot(false);
-          await goAfterLogin(session.user);
-          return;
+          return location.replace(isAdmin ? 'admin.html' : 'dashboard.html');
         }
       }catch(e){
         console.warn('getSession init error:', e);
@@ -483,27 +512,44 @@ if (!cfg.ok) {
       });
 
       // Auth state change: after login/logout
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if(!session){
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!session) {
           // logged out -> show login UI
           showLogin();
           renderNextContest();
           finishBoot(true);
           return;
         }
-        // logged in -> redirect με βάση το profiles.is_admin
+
+        // If the user is already signed in and we are forcing the login screen, don't redirect.
+        if (FORCE_LOGIN && event === 'INITIAL_SESSION') {
+          showLogin();
+          renderNextContest();
+          finishBoot(true);
+          return;
+        }
+
+        // signed in -> redirect
+        const email = String(session.user?.email || '').toLowerCase();
+        const isAdmin = isAdminEmail(email);
+
         finishBoot(false);
-        await goAfterLogin(session.user);
+        window.location.href = isAdmin ? "admin.html" : "dashboard.html";
+      });
+
+      renderNextContest();
+          finishBoot(true);
+          return;
+        }
+        // logged in -> redirect (no intermediate screen)
+        const email = String(session.user?.email||'').toLowerCase();
+        const isAdmin = isAdminEmail(email);
+finishBoot(false);
+        window.location.href = isAdmin ? "admin.html" : "dashboard.html";
       });
 
       console.log("SUPABASE OK");
     })();;
   </script>
-<script>
-  function showToast(message, type = "info") {
-    alert(message);
-  }
-</script>
-
 </body>
 </html>
