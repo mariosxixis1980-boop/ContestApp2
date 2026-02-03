@@ -3,8 +3,6 @@ import { supabase } from "./supabase.js";
 /* =========================
    ✅ SUPABASE SESSION -> localStorage session (app-wide)
 ========================= */
-const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
 const { data: { session }, error: sessErr } = await supabase.auth.getSession();
 if (sessErr) console.warn("getSession error:", sessErr);
 
@@ -15,7 +13,30 @@ if (!session || !session.user) {
 
 const email = String(session.user.email || "").toLowerCase();
 const username = (email.split("@")[0] || "user").trim();
-const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
+
+// Admin flag comes from DB (profiles.is_admin)
+let isAdmin = false;
+try {
+  const { data: prof, error: profErr } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", session.user.id)
+    .maybeSingle();
+
+  isAdmin = !!prof?.is_admin;
+
+  // keep local session consistent
+  localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
+
+  if (!isAdmin) {
+    window.location.href = "dashboard.html";
+  }
+} catch (e) {
+  console.error(e);
+  window.location.href = "dashboard.html";
+}
+
+const isAdmin = email === String('').toLowerCase();
 
 // ✅ store the session used by the rest of the app
 localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));

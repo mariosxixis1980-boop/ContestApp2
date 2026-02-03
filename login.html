@@ -158,8 +158,6 @@
 </div>
 <script type="module">
     import { supabase } from "./supabase.js";
-
-    const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
     const KEY_NEXT = "nextContestStartISO";
     const byId = (id) => document.getElementById(id);
 
@@ -263,7 +261,7 @@ async function assertSupabaseWorks() {
       // ✅ Αν είσαι ήδη συνδεδεμένος, ΔΕΝ μένουμε στο login.
       // Πάμε αυτόματα στο σωστό panel (Admin ή Πελάτης).
       try{
-        goAfterLogin(session);
+        goAfterLogin(session.user);
       }catch(e){
         location.replace("dashboard.html");
       }
@@ -286,27 +284,44 @@ function showLogin(){
       byId("tabLogin").className = "btn tab";
     }
 
-    async function goAfterLogin(session){
-      const email = String(session?.user?.email || "").toLowerCase();
-      const username = email ? email.split("@")[0] : "user";
-      const isAdmin = email && email === ADMIN_EMAIL.toLowerCase();
+    async function goAfterLogin(user) {
+  // Fetch profile (username + admin flag) from DB
+  let username = (user.email || "").split("@")[0] || "user";
+  let isAdmin = false;
 
-      // ✅ legacy session για τα υπόλοιπα pages (admin.js/dashboard κλπ)
-      localStorage.setItem("session", JSON.stringify({
-        username,
-        email,
-        isAdmin
-      }));
+  const { data: prof, error: profErr } = await supabase
+    .from("profiles")
+    .select("username, is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
 
-      if(isAdmin){
-        location.href = "admin.html";
-    }
-else{
-        location.href = "dashboard.html";
-      }
-    }
+  if (profErr) {
+    showToast("Σφάλμα", "Δεν μπόρεσα να διαβάσω το προφίλ.", "danger");
+    console.error(profErr);
+  } else if (!prof) {
+    // If profile is missing, create it (safe defaults)
+    const insertRes = await supabase.from("profiles").insert([{
+      id: user.id,
+      username,
+      email: user.email,
+      is_admin: false
+    }]);
+    if (insertRes.error) console.error(insertRes.error);
+  } else {
+    if (prof.username) username = prof.username;
+    isAdmin = !!prof.is_admin;
+  }
 
-    async function doLogin(){
+  localStorage.setItem("session", JSON.stringify({
+    username,
+    email: user.email,
+    isAdmin
+  }));
+
+  window.location.href = isAdmin ? "admin.html" : "dashboard.html";
+}
+
+async function doLogin(){
       clearMsgs();
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
       const password = String(byId("loginPass").value || "");
@@ -323,7 +338,7 @@ else{
 }
       if(!data?.session) return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
 
-      await goAfterLogin(data.session);
+      await goAfterLogin(data.session.user);
     }
 
     async function doRegister(){
@@ -343,7 +358,7 @@ else{
       }
 
       // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
-      const isAdmin = (email === ADMIN_EMAIL);
+      const isAdmin = (email === );
 
       // 1) Create auth user
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -363,7 +378,7 @@ else{
 
       // 2) Create/Update profile row
       // Στη βάση η στήλη είναι is_admin (όχι isAdmin)
-      const baseProfile = { id: user.id, username, email, is_admin: isAdmin };
+      const baseProfile = { id: user.id, username, email, is_admin: false };
 
       // Αν το username είναι ήδη πιασμένο (unique), δοκιμάζουμε 1 φορά με suffix
       let profilePayload = baseProfile;
@@ -405,7 +420,7 @@ else{
         const { data: { session } } = await supabase.auth.getSession();
         if(session && session.user){
           const email = String(session.user.email||'').toLowerCase();
-          const isAdmin = (email === String(ADMIN_EMAIL).toLowerCase());
+          const isAdmin = (email === String().toLowerCase());
           // sync localStorage session used by the rest of the app
           const username = (email.split('@')[0] || 'user').trim();
           localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
@@ -481,7 +496,7 @@ if (!cfg.ok) {
         }
         // logged in -> redirect (no intermediate screen)
         const email = String(session.user?.email||'').toLowerCase();
-        const isAdmin = (email === ADMIN_EMAIL);
+        const isAdmin = (email === );
         finishBoot(false);
         window.location.href = isAdmin ? "admin.html" : "dashboard.html";
       });

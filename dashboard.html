@@ -624,9 +624,6 @@ import { supabase } from "./supabase.js";
 
    Αν δεν υπάρχουν meta/matches, η σελίδα θα πέσει σε fallback (localStorage).
 ===================================================== */
-
-const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
 const K = {
   S:'session',A:'activeContest',M:'contestMatches',META:'contestMeta'
 };
@@ -675,10 +672,33 @@ async function boot(){
     return;
   }
 
-  // 2) local session για το UI
+  // 2) local session για το UI (με is_admin από DB)
   const email = String(session.user.email || '').toLowerCase();
-  const username = (email.split('@')[0] || 'user').trim();
-  const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
+  let username = (email.split('@')[0] || 'user').trim();
+  let isAdmin = false;
+
+  const { data: prof, error: profErr } = await supabase
+    .from('profiles')
+    .select('username, is_admin')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (profErr) {
+    console.warn('profile fetch error:', profErr);
+  } else if (!prof) {
+    // αν λείπει προφίλ, δημιουργούμε ένα ασφαλές default
+    const ins = await supabase.from('profiles').insert([{
+      id: session.user.id,
+      username,
+      email,
+      is_admin: false
+    }]);
+    if (ins.error) console.warn('profile insert error:', ins.error);
+  } else {
+    if (prof.username) username = prof.username;
+    isAdmin = !!prof.is_admin;
+  }
+
   localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
 
   // 3) users list (για τον admin πίνακα)
