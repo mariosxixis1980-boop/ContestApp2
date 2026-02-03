@@ -709,7 +709,8 @@ async function boot(){
     if(!exists){
       arr.push({ username, email, isAdmin });
       localStorage.setItem('users', JSON.stringify(arr));
-  } catch(e){}
+	    }
+	  } catch(e){}
 
   // 4) logout
   const lo = document.getElementById('lo');
