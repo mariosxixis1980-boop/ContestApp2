@@ -357,8 +357,8 @@ async function doLogin(){
         username = "user_" + Math.random().toString(36).slice(2,8);
       }
 
-      // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
-      const isAdmin = (email === );
+      // Το admin flag ΔΕΝ πρέπει να βασίζεται στο email.
+      // Γίνεται μόνο από τη βάση (profiles.is_admin) και το αλλάζεις εσύ χειροκίνητα.
 
       // 1) Create auth user
       const { data, error } = await supabase.auth.signUp({ email, password });
@@ -419,13 +419,10 @@ async function doLogin(){
       try{
         const { data: { session } } = await supabase.auth.getSession();
         if(session && session.user){
-          const email = String(session.user.email||'').toLowerCase();
-          const isAdmin = (email === String().toLowerCase());
-          // sync localStorage session used by the rest of the app
-          const username = (email.split('@')[0] || 'user').trim();
-          localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
+          // Αν υπάρχει session, αποφασίζει η βάση (profiles.is_admin) και γίνεται redirect.
           finishBoot(false);
-          return location.replace(isAdmin ? 'admin.html' : 'dashboard.html');
+          await goAfterLogin(session.user);
+          return;
         }
       }catch(e){
         console.warn('getSession init error:', e);
@@ -494,11 +491,9 @@ if (!cfg.ok) {
           finishBoot(true);
           return;
         }
-        // logged in -> redirect (no intermediate screen)
-        const email = String(session.user?.email||'').toLowerCase();
-        const isAdmin = (email === );
+        // logged in -> redirect με βάση το profiles.is_admin
         finishBoot(false);
-        window.location.href = isAdmin ? "admin.html" : "dashboard.html";
+        await goAfterLogin(session.user);
       });
 
       console.log("SUPABASE OK");
