@@ -518,5 +518,21 @@ if (!cfg.ok) {
       console.log("SUPABASE OK");
     })();;
   </script>
+
+<script type="module">
+import { ensureSupabaseConfig, clearSupabaseConfig } from './supabase.js';
+
+window.addEventListener('load', async () => {
+  try {
+    await ensureSupabaseConfig();
+  } catch (e) {
+    console.warn('Supabase config invalid, clearing and asking again', e);
+    clearSupabaseConfig();
+    alert('Βάλε ξανά σωστό Supabase Project URL και anon key.');
+    location.reload();
+  }
+});
+</script>
+
 </body>
 </html>
