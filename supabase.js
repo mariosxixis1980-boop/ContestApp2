@@ -1,56 +1,85 @@
-// supabase.js (ES Module)
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// supabase.js
+// Κρατάμε τα keys στο browser (localStorage) για απλό demo/local app.
+// Αν θες παραγωγή/ασφάλεια, τα server keys ΔΕΝ μπαίνουν ποτέ στο browser.
 
-/*
-  This app reads Supabase credentials from localStorage so you don't hardcode keys in GitHub.
-  1) Put your Project URL and anon key once (it will remember):
-     - CMP_SUPABASE_URL
-     - CMP_SUPABASE_ANON_KEY
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-  If missing, you'll be asked once via prompt().
-*/
+const LS_URL_KEY = "CMP_SUPABASE_URL";
+const LS_ANON_KEY = "CMP_SUPABASE_ANON_KEY";
 
-const STORAGE_URL_KEY = 'CMP_SUPABASE_URL';
-const STORAGE_ANON_KEY = 'CMP_SUPABASE_ANON_KEY';
+// (Προαιρετικά) βάλε εδώ default τιμές αν θες να μην ζητά prompt.
+// Άφησέ τα κενά αν θες να τα βάζεις μόνος σου μια φορά.
+const DEFAULT_SUPABASE_URL = "";
+const DEFAULT_SUPABASE_ANON_KEY = "";
 
-function getOrAsk(key, label) {
-  const existing = localStorage.getItem(key);
-  if (existing && existing.trim()) return existing.trim();
-
-  const val = prompt(`Βάλε ${label} (θα αποθηκευτεί στο browser).`);
-  if (val && val.trim()) {
-    localStorage.setItem(key, val.trim());
-    return val.trim();
+function isValidUrl(u) {
+  if (!u) return false;
+  try {
+    const url = new URL(u);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch (_) {
+    return false;
   }
-  return '';
 }
 
-const SUPABASE_URL = getOrAsk(STORAGE_URL_KEY, 'Supabase Project URL');
-const SUPABASE_ANON_KEY = getOrAsk(STORAGE_ANON_KEY, 'Supabase anon public key');
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('Supabase credentials missing. Please set CMP_SUPABASE_URL and CMP_SUPABASE_ANON_KEY in localStorage.');
+function isLikelyAnonKey(k) {
+  if (!k) return false;
+  // Supabase publishable keys συνήθως αρχίζουν με "sb_publishable_"
+  // ή παλιά "eyJ" (JWT-like). Δεν είναι τέλειος έλεγχος, αλλά βοηθά.
+  return k.startsWith("sb_publishable_") || k.startsWith("eyJ");
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return data.user || null;
+export function clearSupabaseConfig() {
+  localStorage.removeItem(LS_URL_KEY);
+  localStorage.removeItem(LS_ANON_KEY);
 }
 
-export async function getProfileById(userId) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, email, username, is_admin, created_at')
-    .eq('id', userId)
-    .maybeSingle();
+// Ζητά τα κλειδιά αν λείπουν/είναι άκυρα. Επιστρέφει { url, anonKey }.
+export async function ensureSupabaseConfig() {
+  let url = localStorage.getItem(LS_URL_KEY) || DEFAULT_SUPABASE_URL;
+  let anonKey = localStorage.getItem(LS_ANON_KEY) || DEFAULT_SUPABASE_ANON_KEY;
 
-  if (error) throw error;
-  return data || null;
+  // Αν υπάρχει αλλά είναι "null"/"undefined" ως string
+  if (url === "null" || url === "undefined") url = "";
+  if (anonKey === "null" || anonKey === "undefined") anonKey = "";
+
+  // Αν άκυρο, καθάρισε για να ξαναζητήσει.
+  if (!isValidUrl(url)) url = "";
+  if (!isLikelyAnonKey(anonKey)) anonKey = "";
+
+  // Ζήτα μόνο αν λείπουν
+  if (!url) {
+    url = prompt("Βάλε Supabase Project URL (π.χ. https://xxxxx.supabase.co)");
+    if (url) url = url.trim();
+  }
+  if (!anonKey) {
+    anonKey = prompt("Βάλε Supabase Publishable (anon) key (sb_publishable_...)");
+    if (anonKey) anonKey = anonKey.trim();
+  }
+
+  // Τελικός έλεγχος
+  if (!isValidUrl(url)) {
+    clearSupabaseConfig();
+    throw new Error("Invalid Supabase URL. Πρέπει να είναι http/https URL.");
+  }
+  if (!isLikelyAnonKey(anonKey)) {
+    clearSupabaseConfig();
+    throw new Error("Invalid Supabase anon/publishable key.");
+  }
+
+  // Αποθήκευση
+  localStorage.setItem(LS_URL_KEY, url);
+  localStorage.setItem(LS_ANON_KEY, anonKey);
+
+  return { url, anonKey };
 }
 
-export async function signOutSafe() {
-  try { await supabase.auth.signOut(); } catch (_) {}
+// Lazy init client ώστε να μην «σπάει» το import αν λείπουν keys
+let _client = null;
+
+export async function getSupabase() {
+  if (_client) return _client;
+  const { url, anonKey } = await ensureSupabaseConfig();
+  _client = createClient(url, anonKey);
+  return _client;
 }
