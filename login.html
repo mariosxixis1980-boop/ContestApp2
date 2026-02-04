@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#0b1220;color:#eaf1ff}
+    .card{max-width:520px;width:92%;background:#101a30;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+    label{display:block;margin-top:12px;font-size:14px;opacity:.9}
+    input{width:100%;padding:10px 12px;margin-top:6px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c1426;color:#eaf1ff}
+    button{margin-top:14px;width:100%;padding:10px 12px;border-radius:10px;border:0;background:#2f7dff;color:white;font-weight:700;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .row{display:flex;gap:10px}
+    .row button{width:50%}
+    .msg{margin-top:12px;font-size:13px;white-space:pre-wrap}
+    .muted{opacity:.75;font-size:12px;margin-top:10px}
+    a{color:#8cc0ff}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Login</h2>
+    <p class="muted">Κάνε login με email/password (Supabase Auth).</p>
+
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="email" placeholder="name@email.com" />
+
+    <label>Password</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+
+    <div class="row">
+      <button id="btnLogin">Sign in</button>
+      <button id="btnLogout" type="button">Sign out</button>
+    </div>
+
+    <div id="msg" class="msg"></div>
+
+    <div class="muted">
+      Αν δεν έχεις βάλει ακόμα Supabase URL/anon key, θα σου βγει prompt. 
+      Μπορείς επίσης να τα αλλάξεις σβήνοντας τα localStorage keys: <code>CMP_SUPABASE_URL</code>, <code>CMP_SUPABASE_ANON_KEY</code>.
+    </div>
+
+    <p class="muted" style="margin-top:10px">Πήγαινε: <a href="locking.html">locking</a> | <a href="dashboard.html">dashboard</a></p>
+  </div>
+
+  <script type="module">
+    import { supabase, getCurrentUser, getProfileById, signOutSafe } from './supabase.js';
+
+    const byId = (id) => document.getElementById(id);
+    const msgEl = byId('msg');
+    const btnLogin = byId('btnLogin');
+    const btnLogout = byId('btnLogout');
+
+    // --- Lockout (local only) ---
+    const LOCK_KEY = 'CMP_LOCK_UNTIL_MS';
+    const FAIL_KEY = 'CMP_FAILS';
+    const MAX_FAILS = 5;
+    const LOCK_MINUTES = 10;
+
+    function now() { return Date.now(); }
+
+    function getLockUntil() {
+      const v = Number(localStorage.getItem(LOCK_KEY) || '0');
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function setLock(minutes) {
+      const until = now() + minutes * 60 * 1000;
+      localStorage.setItem(LOCK_KEY, String(until));
+      localStorage.setItem(FAIL_KEY, '0');
+      return until;
+    }
+
+    function clearLock() {
+      localStorage.setItem(LOCK_KEY, '0');
+      localStorage.setItem(FAIL_KEY, '0');
+    }
+
+    function incFail() {
+      const n = Number(localStorage.getItem(FAIL_KEY) || '0') + 1;
+      localStorage.setItem(FAIL_KEY, String(n));
+      return n;
+    }
+
+    function lockMessage(until) {
+      const secs = Math.max(0, Math.ceil((until - now()) / 1000));
+      const mins = Math.ceil(secs / 60);
+      return `LOCKED για ~${mins} λεπτά (πολλές αποτυχημένες προσπάθειες).`;
+    }
+
+    function setMsg(t) { msgEl.textContent = t || ''; }
+
+    async function routeAfterLogin(user) {
+      // check profile admin
+      let profile = null;
+      try { profile = await getProfileById(user.id); } catch (e) { console.error(e); }
+
+      if (profile && profile.is_admin === true) {
+        window.location.href = 'dashboard.html';
+      } else {
+        window.location.href = 'locking.html';
+      }
+    }
+
+    async function init() {
+      // If already logged in, route
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setMsg(`Signed in: ${user.email}`);
+          await routeAfterLogin(user);
+        }
+      } catch (e) {
+        console.error('init error', e);
+      }
+    }
+
+    btnLogin.addEventListener('click', async () => {
+      const until = getLockUntil();
+      if (until > now()) {
+        setMsg(lockMessage(until));
+        return;
+      }
+
+      const email = byId('email').value.trim();
+      const password = byId('password').value;
+      if (!email || !password) {
+        setMsg('Βάλε email και password.');
+        return;
+      }
+
+      btnLogin.disabled = true;
+      setMsg('Signing in…');
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        clearLock();
+        const user = data.user;
+        setMsg(`OK: ${user?.email || ''}`);
+        await routeAfterLogin(user);
+
+      } catch (e) {
+        console.error(e);
+        const fails = incFail();
+        if (fails >= MAX_FAILS) {
+          const u = setLock(LOCK_MINUTES);
+          setMsg(lockMessage(u));
+        } else {
+          setMsg(`Λάθος login (${fails}/${MAX_FAILS}). ${e?.message || e}`);
+        }
+      } finally {
+        btnLogin.disabled = false;
+      }
+    });
+
+    btnLogout.addEventListener('click', async () => {
+      await signOutSafe();
+      setMsg('Signed out.');
+    });
+
+    init();
+  </script>
+</body>
+</html>

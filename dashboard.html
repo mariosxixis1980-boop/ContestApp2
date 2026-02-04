@@ -1,40 +1,91 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="el">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial;background:#0b1220;color:#eaf1ff;margin:0}
+    header{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08);background:#0f1830;position:sticky;top:0}
+    .wrap{max-width:900px;margin:0 auto;padding:18px}
+    .card{background:#101a30;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;margin-top:14px}
+    button{padding:10px 12px;border-radius:10px;border:0;background:#2f7dff;color:white;font-weight:700;cursor:pointer}
+    .muted{opacity:.8;font-size:13px}
+    pre{white-space:pre-wrap;word-break:break-word;background:#0c1426;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.08)}
+    a{color:#8cc0ff}
+  </style>
 </head>
 <body>
-  <h1>Admin Dashboard</h1>
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-weight:800">Admin Dashboard</div>
+        <div class="muted" id="who">…</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button id="btnLogout" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">Status</h3>
+      <div id="status" class="muted">Έλεγχος admin…</div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px 0">Profile</h3>
+      <pre id="profile">(loading…)</pre>
+      <div class="muted">Αν δεν είσαι admin, θα σε στείλει στη σελίδα locking.</div>
+    </div>
+
+    <p class="muted" style="margin-top:10px">Γρήγορα links: <a href="login.html">login</a> | <a href="locking.html">locking</a></p>
+  </div>
 
   <script type="module">
-    import { supabase } from './supabase.js';
+    import { getCurrentUser, getProfileById, signOutSafe } from './supabase.js';
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
+    const who = document.getElementById('who');
+    const status = document.getElementById('status');
+    const pre = document.getElementById('profile');
+    const btnLogout = document.getElementById('btnLogout');
 
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
+    function setStatus(t){ status.textContent = t; }
+
+    async function run() {
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        who.textContent = user.email || user.id;
+
+        const profile = await getProfileById(user.id);
+        pre.textContent = JSON.stringify(profile, null, 2);
+
+        if (!profile || profile.is_admin !== true) {
+          setStatus('Not admin -> redirect to locking…');
+          window.location.href = 'locking.html';
+          return;
+        }
+
+        setStatus('Admin OK ✅');
+
+      } catch (e) {
+        console.error('dashboard error', e);
+        setStatus('Σφάλμα. Δες Console.');
       }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
-
-      if (error || !profile || profile.is_admin !== true) {
-        window.location.href = 'locking.html';
-        return;
-      }
-
-      console.log('Admin OK');
-
-    } catch (e) {
-      console.error('Dashboard fatal error:', e);
-      window.location.href = 'locking.html';
     }
+
+    btnLogout.addEventListener('click', async () => {
+      await signOutSafe();
+      window.location.href = 'login.html';
+    });
+
+    run();
   </script>
 </body>
 </html>
