@@ -1,4 +1,14 @@
-import { supabase } from "./supabase.js";
+import { getSupabase, clearSupabaseConfig } from "./supabase.js";
+
+let supabase;
+try {
+  supabase = await getSupabase();
+} catch (e) {
+  console.error("Supabase config missing/invalid:", e);
+  alert("Δεν βρέθηκε σωστό Supabase URL / Anon key. Πήγαινε στη Login σελίδα και βάλε τα σωστά στοιχεία.");
+  location.replace("login.html");
+  throw e;
+}
 
 /* =========================
    ✅ SUPABASE SESSION -> localStorage session (app-wide)
