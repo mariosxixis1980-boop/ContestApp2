@@ -2,136 +2,124 @@
 <html lang="el">
 <head>
   <meta charset="UTF-8" />
-  <title>Cyprus Match Predict - Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyprus Match Predict – Login</title>
 
-  <!-- Supabase v2 (ΜΟΝΟ ΑΥΤΟ) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     body {
-      background: #0b1320;
+      background:#0f172a;
       font-family: Arial, sans-serif;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      color:white;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
     }
-    .card {
-      background: #111a2b;
-      padding: 24px;
-      border-radius: 12px;
-      width: 320px;
-      box-shadow: 0 0 20px rgba(0,0,0,.4);
+    .box {
+      background:#020617;
+      padding:30px;
+      border-radius:10px;
+      width:320px;
     }
-    h2 {
-      margin-top: 0;
-      text-align: center;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 6px;
-      border: none;
+    input, button {
+      width:100%;
+      padding:10px;
+      margin-top:10px;
+      border-radius:6px;
+      border:none;
     }
     button {
-      width: 100%;
-      padding: 10px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .login {
-      background: #1e90ff;
-      color: #fff;
+      background:#2563eb;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
     }
     .msg {
-      margin-top: 10px;
-      font-size: 14px;
-      min-height: 18px;
+      margin-top:10px;
+      font-size:13px;
+      color:#fca5a5;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="card">
-    <h2>🔐 Login</h2>
+<div class="box">
+  <h2>Login</h2>
 
-    <input id="email" type="email" placeholder="Email" />
-    <input id="password" type="password" placeholder="Password" />
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
 
-    <button class="login" id="loginBtn">Login</button>
+  <button id="loginBtn">Login</button>
 
-    <div class="msg" id="msg"></div>
-  </div>
+  <div id="msg" class="msg"></div>
+</div>
 
-  <script>
-    // =============================
-    // SUPABASE CONFIG
-    // =============================
-   <script>
-  const SUPABASE_URL = "https://abcd1234.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....";
+<script>
+/* 🔴 ΒΑΛΕ ΤΑ ΔΙΚΑ ΣΟΥ */
+const SUPABASE_URL = "PUT_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY = "PUT_YOUR_ANON_KEY_HERE";
 
-  const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
+const msg = document.getElementById("msg");
 
-    const msg = document.getElementById("msg");
+document.getElementById("loginBtn").onclick = async () => {
+  msg.textContent = "";
 
-    // =============================
-    // LOGIN
-    // =============================
-    document.getElementById("loginBtn").addEventListener("click", async () => {
-      msg.textContent = "Σύνδεση...";
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
+  if (!email || !password) {
+    msg.textContent = "Συμπλήρωσε email και password";
+    return;
+  }
 
-      if (!email || !password) {
-        msg.textContent = "Συμπλήρωσε email και password";
-        return;
-      }
+  /* 1️⃣ LOGIN */
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
 
-      // 1. Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  if (error) {
+    msg.textContent = error.message;
+    return;
+  }
 
-      if (error) {
-        msg.textContent = error.message;
-        return;
-      }
+  const user = data.user;
 
-      const user = data.user;
+  /* 2️⃣ ΕΛΕΓΧΟΣ PROFILE */
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
 
-      // 2. Παίρνουμε profile από ΤΟΝ ΠΙΝΑΚΑ ΣΟΥ
-      const { data: profile, error: profErr } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
-
-      if (profErr || !profile) {
-        msg.textContent = "Δεν βρέθηκε profile στον πίνακα profiles";
-        return;
-      }
-
-      // 3. Redirect
-      if (profile.is_admin === true) {
-        window.location.href = "admin.html";
-      } else {
-        window.location.href = "dashboard.html";
-      }
+  /* 3️⃣ ΑΝ ΔΕΝ ΥΠΑΡΧΕΙ → ΔΗΜΙΟΥΡΓΙΑ */
+  if (!profile) {
+    await supabase.from("profiles").insert({
+      id: user.id,
+      email: user.email,
+      username: user.email.split("@")[0],
+      is_admin: false
     });
-  </script>
+
+    window.location.href = "dashboard.html";
+    return;
+  }
+
+  /* 4️⃣ REDIRECT */
+  if (profile.is_admin) {
+    window.location.href = "admin.html";
+  } else {
+    window.location.href = "dashboard.html";
+  }
+};
+</script>
 
 </body>
 </html>
