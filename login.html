@@ -146,233 +146,68 @@
     </p>
   </div>
 
-  <script type="module">
-import { getSupabase, clearSupabaseConfig } from "./supabase.js";
+ <script type="module">
+  import { getSupabase } from "./supabase.js";
 
-    const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-    const KEY_NEXT = "nextContestStartISO";
-    const byId = (id) => document.getElementById(id);
+  let supabase = null;
 
-    function setInlineMsg(id, msg){
-      const el = byId(id);
-      const text = String(msg || "").trim();
-      if(!el) return;
-      if(text){
-        el.textContent = text;
-        el.style.display = "block";
-      }else{
-        el.textContent = "";
-        el.style.display = "none";
-      }
-    }
-    function clearMsgs(){
-      setInlineMsg("loginErr","");
-      setInlineMsg("regErr","");
-    }
+  const loginBtn = document.getElementById("loginBtn");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const msg = document.getElementById("msg");
 
-    function fmtDateGreek(isoDate){
-      const s = String(isoDate||"").trim();
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-      const [yy,mm,dd] = s.split("-");
-      return `${dd}/${mm}/${yy}`;
+  // init supabase ΜΙΑ ΦΟΡΑ
+  async function init() {
+    supabase = await getSupabase();
+    console.log("Supabase ready");
+  }
+
+  await init();
+
+  loginBtn.onclick = async () => {
+    if (!supabase) {
+      msg.textContent = "Supabase not ready";
+      return;
     }
 
-    function renderNextContest(){
-      const raw = String(localStorage.getItem(KEY_NEXT) || "");
-      const iso = raw.replace(/"/g,"").trim();
-      const pretty = fmtDateGreek(iso);
+    msg.textContent = "Σύνδεση...";
 
-      if(pretty){
-        byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
-        byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
-      }else{
-        byId("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
-        byId("nextSub").textContent = "Ο admin θα βάλει ημερομηνία από το Admin Panel.";
-      }
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      msg.textContent = "Login error: " + error.message;
+      return;
     }
 
-    
-    async function showAlreadyLoggedIn(session){
-	    // Δείξε μήνυμα + κουμπιά αντί για auto redirect
-	    const box = byId("alreadyLoggedInBox");
-	    const msg = byId("alreadyLoggedInMsg");
-	    if(msg) msg.textContent = "✅ Είσαι ήδη συνδεδεμένος. Διάλεξε πού να πας ή κάνε logout.";
-	    if(box) box.classList.remove("hide");
+    const user = data.user;
 
-	    const goAdminBtn = byId("goAdminBtn");
-	    const goClientBtn = byId("goClientBtn");
-	    const doLogoutBtn = byId("doLogoutBtn");
+    const { data: profile, error: perr } = await supabase
+      .from("users")
+      .select("username, is_admin")
+      .eq("email", user.email)
+      .single();
 
-	    if(goAdminBtn) goAdminBtn.onclick = async () => { await goAfterLogin(session); };
-	    if(goClientBtn) goClientBtn.onclick = () => { location.href = "dashboard.html"; };
-	    if(doLogoutBtn) doLogoutBtn.onclick = async () => {
-	      try { await supabase.auth.signOut(); } catch(e){ console.warn(e); }
-	      location.reload();
-	    };
+    if (perr) {
+      msg.textContent = "Profile error";
+      return;
     }
 
-function showLogin(){
-      clearMsgs();
-      byId("loginBox").classList.remove("hide");
-      byId("registerBox").classList.add("hide");
-      byId("tabLogin").className = "btn a tab";
-      byId("tabRegister").className = "btn tab";
+    localStorage.setItem("CMP_USER", JSON.stringify(user));
+    localStorage.setItem("CMP_PROFILE", JSON.stringify(profile));
+
+    if (profile.is_admin === true) {
+      window.location.href = "admin.html";
+    } else {
+      window.location.href = "dashboard.html";
     }
+  };
+</script>
 
-    function showRegister(){
-      clearMsgs();
-      byId("registerBox").classList.remove("hide");
-      byId("loginBox").classList.add("hide");
-      byId("tabRegister").className = "btn a tab";
-      byId("tabLogin").className = "btn tab";
-    }
-
-    async function goAfterLogin(session){
-      const email = String(session?.user?.email || "").toLowerCase();
-      const userId = session?.user?.id || null;
-      const username = email ? email.split("@")[0] : "user";
-
-      // 1) προσπάθεια να διαβάσουμε is_admin από profiles (αληθινό admin flag)
-      let profile = null;
-      try{
-        if(userId){
-          // try read profile by id (preferred)
-          let { data, error } = await supabase
-            .from("profiles")
-            .select("id,email,username,is_admin")
-            .eq("id", userId)
-            .maybeSingle();
-
-          if(error) throw error;
-
-          // αν δεν υπάρχει profile, δημιουργούμε ένα (insert) — επιτρέπεται από τις RLS policies που έχουμε
-          if(!data){
-            const ins = await supabase
-              .from("profiles")
-              .insert({ id: userId, email, username })
-              .select("id,email,username,is_admin")
-              .single();
-            if(ins.error) throw ins.error;
-            data = ins.data;
-          }
-
-          profile = data || null;
-        }
-      }catch(e){
-        console.warn("Profile fetch/insert failed (will fallback to ADMIN_EMAIL):", e);
-      }
-
-      // 2) fallback: αν θες να έχεις 1 hardcoded admin email για να μη “κλειδώσεις” έξω
-      const hardAdmin = email && ADMIN_EMAIL && email === String(ADMIN_EMAIL).toLowerCase();
-
-      const isAdmin = !!(profile && profile.is_admin) || hardAdmin;
-
-      // ✅ αποθηκεύουμε και profile για reuse σε άλλα pages
-      if(profile) localStorage.setItem("CMP_PROFILE", JSON.stringify(profile));
-
-      // ✅ legacy session για τα υπόλοιπα pages (admin.js/dashboard κλπ)
-      localStorage.setItem("session", JSON.stringify({
-        username,
-        email,
-        isAdmin
-      }));
-
-      // redirect
-      window.location.href = isAdmin ? "admin.html" : "dashboard.html";
-    }
-
-    async function doLogin(){
-      clearMsgs();
-      const email = String(byId("loginEmail").value || "").trim().toLowerCase();
-      const password = String(byId("loginPass").value || "");
-
-    const supabase = await getSupabase();
-      if(!email || !password) return setInlineMsg("loginErr","Γράψε email και password.");
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if(error) return setInlineMsg("loginErr", `Login error: ${error.message}`);
-      if(!data?.session) return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
-
-      await goAfterLogin(data.session);
-    }
-
-    async function doRegister(){
-      clearMsgs();
-      const usernameRaw = String(byId("regUser").value || "").trim();
-      const email = String(byId("regEmail").value || "").trim().toLowerCase();
-      const password = String(byId("regPass").value || "");
-
-      if(!email || !password){
-        return setInlineMsg("regErr","Γράψε email και password.");
-      }
-
-      // username υποχρεωτικό στη βάση (profiles.username είναι NOT NULL)
-      let username = usernameRaw || (email.split("@")[0] || "").trim();
-      if(!username){
-        username = "user_" + Math.random().toString(36).slice(2,8);
-      }
-
-      // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
-      const isAdmin = (email === ADMIN_EMAIL);
-
-      // 1) Create auth user
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if(error){
-        // Supabase errors (π.χ. "User already registered", rate limit, κτλ)
-        return setInlineMsg("regErr", "Register error: " + (error.message || String(error)));
-      }
-      const user = data?.user;
-      if(!user?.id){
-        return setInlineMsg("regErr", "Register error: Δεν πήρα user id από Supabase.");
-      }
-
-      // 2) Create/Update profile row
-      // Στη βάση η στήλη είναι is_admin (όχι isAdmin)
-      const baseProfile = { id: user.id, username, email, is_admin: isAdmin };
-
-      // Αν το username είναι ήδη πιασμένο (unique), δοκιμάζουμε 1 φορά με suffix
-      let profilePayload = baseProfile;
-      let { error: pErr } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
-
-      if(pErr && String(pErr.code) === "23505"){
-        // duplicate key -> άλλαξε username και ξαναδοκίμασε
-        profilePayload = { ...baseProfile, username: `${username}_${Math.random().toString(36).slice(2,5)}` };
-        const retry = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
-        pErr = retry.error;
-      }
-
-      if(pErr){
-        console.warn("profiles upsert error:", pErr);
-        // Προσοχή: ο χρήστης έχει γίνει register στο Auth, απλά δεν γράφτηκε profile
-        return setInlineMsg("regOk",
-          "Η εγγραφή έγινε, αλλά δεν γράφτηκε profile. (Έλεγξε RLS / table rules). " + (pErr.message || "")
-        );
-      }
-
-      setInlineMsg("regOk","✅ Η εγγραφή έγινε! Τώρα κάνε login. (Ίσως χρειάζεται email confirm.)");
-      showLogin();
-    }
-// INIT
-    (async () => {
-      showLogin();
-      renderNextContest();
-
-      const { data: sessData, error } = await supabase.auth.getSession();
-      if (error) console.warn("getSession error:", error);
-
-      // Αν υπάρχει ήδη session, ΔΕΝ κάνουμε auto-redirect (για να μην σε πετάει κατευθείαν στο Admin).
-      // Σου δείχνουμε επιλογές.
-      if (sessData?.session) {
-        await showAlreadyLoggedIn(sessData.session);
-      }
-
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        // Όταν αλλάξει auth state, αν υπάρχει session δείξε επιλογές.
-        if (session) await showAlreadyLoggedIn(session);
-      });
-
-      console.log("SUPABASE OK");
-    })();;
-  </script>
 </body>
 </html>
