@@ -1,13 +1,17 @@
-import { getSupabase, clearSupabaseConfig } from "./supabase.js";
+import { supabase } from './supabase.js';
 
-let supabase;
-try {
-  supabase = await getSupabase();
-} catch (e) {
-  console.error("Supabase config missing/invalid:", e);
-  alert("Δεν βρέθηκε σωστό Supabase URL / Anon key. Πήγαινε στη Login σελίδα και βάλε τα σωστά στοιχεία.");
-  location.replace("login.html");
-  throw e;
+const profileRaw = localStorage.getItem('CMP_PROFILE');
+
+if (!profileRaw) {
+  window.location.href = 'login.html';
+}
+
+const profile = JSON.parse(profileRaw);
+
+if (!profile.is_admin) {
+  alert('Δεν είσαι admin');
+  window.location.href = 'dashboard.html';
+
 }
 
 /* =========================
