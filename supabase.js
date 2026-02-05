@@ -4,8 +4,8 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const LS_URL_KEY = "https://nljrwvrmhlrpdgeougpk.supabase.co";
-const LS_ANON_KEY = "sb_publishable_I0PqYv3fuLS8cE8hxftelA_U1_huEzN";
+const LS_URL_KEY = 
+const LS_ANON_KEY = 
 
 // (Προαιρετικά) βάλε εδώ default τιμές αν θες να μην ζητά prompt.
 // Άφησέ τα κενά αν θες να τα βάζεις μόνος σου μια φορά.
