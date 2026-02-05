@@ -146,24 +146,61 @@
     </p>
   </div>
 
-  <script type="module">
-    import { supabase } from "./supabase.js";
+ 
+<script type="module">
+import { supabase } from './supabase.js';
 
-    const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-    const KEY_NEXT = "nextContestStartISO";
-    const byId = (id) => document.getElementById(id);
+const loginBtn = document.getElementById('loginBtn');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const msg = document.getElementById('msg');
 
-    function setInlineMsg(id, msg){
-      const el = byId(id);
-      const text = String(msg || "").trim();
-      if(!el) return;
-      if(text){
-        el.textContent = text;
-        el.style.display = "block";
-      }else{
-        el.textContent = "";
-        el.style.display = "none";
-      }
+loginBtn.onclick = async () => {
+  msg.textContent = 'Σύνδεση...';
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    msg.textContent = 'Login error: ' + error.message;
+    return;
+  }
+
+  const user = data.user;
+
+  // Φέρνουμε profile
+  const { data: profile, error: pErr } = await supabase
+    .from('users')
+    .select('username, is_admin')
+    .eq('email', user.email)
+    .single();
+
+  if (pErr) {
+    msg.textContent = 'Profile error';
+    return;
+  }
+
+  // Αποθήκευση
+  localStorage.setItem('CMP_USER', JSON.stringify(user));
+  localStorage.setItem('CMP_PROFILE', JSON.stringify(profile));
+
+  // ✅ ADMIN → admin panel
+  if (profile.is_admin === true) {
+    window.location.href = 'admin.html';
+    return;
+  }
+
+  // 👤 USER → dashboard
+  window.location.href = 'dashboard.html';
+};
+</script>
+
+
     }
     function clearMsgs(){
       setInlineMsg("loginErr","");
