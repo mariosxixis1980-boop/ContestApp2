@@ -1,12 +1,11 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="el">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Cyprus Match Predict</title>
-<link href="icon-192.png" rel="icon"/>
-<style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cyprus Match Predict</title>
+  <link rel="icon" href="icon-192.png" />
+  <style>
     :root{
       --bg:#070b13;--b:rgba(255,255,255,.12);
       --t:#eaf1ff;--m:rgba(255,255,255,.65);
@@ -23,25 +22,6 @@
         var(--bg);
       display:flex;align-items:center;justify-content:center;
     }
-
-    /* ✅ Prevent "flash" of login UI before auth check */
-    body.booting .card{display:none;}
-    .boot{
-      width:min(520px, 100%);
-      border:1px solid var(--b);
-      border-radius:18px;
-      padding:14px;
-      background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.04));
-      box-shadow:0 18px 60px rgba(0,0,0,.55);
-      text-align:center;
-    }
-    .spin{
-      width:36px;height:36px;border-radius:999px;margin:12px auto 6px;
-      border:3px solid rgba(255,255,255,.14);
-      border-top-color:rgba(46,204,113,.65);
-      animation:sp 1s linear infinite;
-    }
-    @keyframes sp{to{transform:rotate(360deg)}}
     .card{
       width:min(520px, 100%);
       border:1px solid var(--b);
@@ -82,112 +62,96 @@
     .hide{display:none}
   </style>
 </head>
-<body class="booting">
 
-  <!-- ✅ Boot screen (prevents 1-frame wrong UI) -->
-  <div class="boot" id="boot">
-    <div style="font-size:18px;font-weight:900;">Cyprus Match Predict</div>
-    <div class="spin" aria-hidden="true"></div>
-    <div class="sub">Φόρτωση...</div>
-  </div>
-<div class="card" id="card">
-<div style="text-align:center;margin-bottom:12px;">
-<div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
-<div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾  C.M.P 🇨🇾</div>
-</div>
-<h1>🔐 Login</h1>
-<div class="sub">Σύνδεση με Email &amp; Password .</div>
-<div class="box" id="nextBox">
-<div class="mini" style="font-size:16px;font-weight:900">
+<body>
+  <div class="card">
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
+      <div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾  C.M.P 🇨🇾</div>
+    </div>
+
+    <h1>🔐 Login</h1>
+    <div class="sub">Σύνδεση με Email & Password (Supabase).</div>
+
+    <div class="box" id="nextBox">
+      <div class="mini" style="font-size:16px;font-weight:900">
         📅 <span id="nextText">Επόμενος διαγωνισμός: -</span>
-</div>
-<div class="mini" id="nextSub" style="margin-top:6px;opacity:.95">-</div>
-</div>
-<div class="tabs">
-<button class="btn a tab" id="tabLogin" type="button">Είσοδος</button>
-<button class="btn tab" id="tabRegister" type="button">Εγγραφή</button>
-</div>
-<!-- Αν υπάρχει ήδη ενεργό Supabase session, δείχνουμε επιλογές (δεν σε πετάμε αυτόματα στο admin) -->
-<div class="box hide" id="alreadyLoggedInBox">
-<div class="mini" id="alreadyLoggedInMsg"></div>
-<div class="row" style="margin-top:10px">
-<button class="btn a" id="goAdminBtn" type="button">➡️ Admin</button>
-<button class="btn a" id="goClientBtn" type="button">➡️ Πελάτης</button>
-<button class="btn" id="doLogoutBtn" type="button">🚪 Logout</button>
-</div>
-</div>
-<!-- LOGIN -->
-<div class="box" id="loginBox">
-<label>Email</label>
-<input autocomplete="email" id="loginEmail" placeholder="email@example.com" type="email"/>
-<label>Password</label>
-<input autocomplete="current-password" id="loginPass" placeholder="••••••••" type="password"/>
-<div class="row">
-<button class="btn g" id="loginBtn" type="button">✅ Login</button>
-<button class="btn" id="clearBtn" type="button">🧽 Clear</button>
-<button class="btn" id="resetBtn" type="button">🔁 Ξέχασες τον κωδικό σου;</button>
-</div>
-<div class="mini" id="loginErr" style="color:#ffb3b3;display:none"></div>
+      </div>
+      <div class="mini" id="nextSub" style="margin-top:6px;opacity:.95">-</div>
+    </div>
 
-</div>
-<!-- REGISTER -->
-<div class="box hide" id="registerBox">
-<label>Username (ΥΠΟΧΡΕΩΤΙΚΟ)</label>
-<input autocomplete="username" id="regUser" placeholder="π.χ marios10"/>
-<label>Email</label>
-<input autocomplete="email" id="regEmail" placeholder="π.χ name@gmail.com" type="email"/>
-<label>Password</label>
-<input autocomplete="new-password" id="regPass" placeholder="διάλεξε password" type="password"/>
-<div class="row">
-<button class="btn g" id="regBtn" type="button">🆕 Δημιουργία</button>
-<button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
-</div>
-<div class="mini" id="regErr" style="color:#ffb3b3;display:none"></div>
-<div class="mini" id="regOk" style="color:#b7ffcf;display:none"></div>
-<div class="mini">Θα σου έρθει email επιβεβαίωσης αν είναι ανοικτό στο Supabase Auth settings.</div>
-</div>
-<p style="font-size:11px;text-align:center;color:rgba(255,255,255,.55);margin-top:12px;">
+    <div class="tabs">
+      <button class="btn a tab" id="tabLogin" type="button">Είσοδος</button>
+      <button class="btn tab" id="tabRegister" type="button">Εγγραφή</button>
+    </div>
+
+    <!-- Αν υπάρχει ήδη ενεργό Supabase session, δείχνουμε επιλογές (δεν σε πετάμε αυτόματα στο admin) -->
+    <div id="alreadyLoggedInBox" class="box hide">
+      <div id="alreadyLoggedInMsg" class="mini"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn a" id="goAdminBtn" type="button">➡️ Admin</button>
+        <button class="btn a" id="goClientBtn" type="button">➡️ Πελάτης</button>
+        <button class="btn" id="doLogoutBtn" type="button">🚪 Logout</button>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="box" id="loginBox">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="email" placeholder="email@example.com"/>
+
+      <label>Password</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"/>
+
+      <div class="row">
+        <button class="btn g" id="loginBtn" type="button">✅ Login</button>
+        <button class="btn" id="clearBtn" type="button">🧽 Clear</button>
+        <button class="btn" id="resetBtn" type="button">🔁 Reset Password</button>
+      </div>
+
+      <div id="loginErr" class="mini" style="color:#ffb3b3;display:none"></div>
+      <div class="mini">Tip: Αν βλέπεις “κωδικό μόνος του”, είναι autofill του Chrome.</div>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="box hide" id="registerBox">
+	      <label>Username (ΥΠΟΧΡΕΩΤΙΚΟ)</label>
+      <input id="regUser" autocomplete="username" placeholder="π.χ marios10"/>
+
+      <label>Email</label>
+      <input id="regEmail" type="email" autocomplete="email" placeholder="π.χ name@gmail.com"/>
+
+      <label>Password</label>
+      <input id="regPass" type="password" autocomplete="new-password" placeholder="διάλεξε password"/>
+
+      <div class="row">
+        <button class="btn g" id="regBtn" type="button">🆕 Δημιουργία</button>
+        <button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
+      </div>
+
+      <div id="regErr" class="mini" style="color:#ffb3b3;display:none"></div>
+	      <div id="regOk" class="mini" style="color:#b7ffcf;display:none"></div>
+      <div class="mini">Θα σου έρθει email επιβεβαίωσης αν είναι ανοικτό στο Supabase Auth settings.</div>
+    </div>
+
+    <p style="font-size:11px;text-align:center;color:rgba(255,255,255,.55);margin-top:12px;">
       Η εφαρμογή δεν αποτελεί παιχνίδι στοιχήματος.
     </p>
-<p style="font-size:12px;text-align:center;margin-top:6px;color:rgba(255,255,255,.75);font-weight:700;">
-      Με τη σύνδεση αποδέχεστε τους
-      <a href="terms.html" style="color:#eaf1ff;text-decoration:underline;" target="_blank">Όρους &amp; Προϋποθέσεις</a>
-      και τους
-      <a href="rules.html" style="color:#eaf1ff;text-decoration:underline;" target="_blank">Κανόνες Παιχνιδιού</a>.
-    </p>
-</div>
-<script type="module">
-    import { getSupabase, clearSupabaseConfig } from "./supabase.js";
-let supabase;
-try {
-  supabase = await getSupabase();
-} catch (e) {
-  console.error(e);
-  alert('Λάθος Supabase URL/Key. Θα ζητηθούν ξανά.');
-  try { clearSupabaseConfig(); } catch (_) {}
-  // ξαναφόρτωσε για να βγει prompt
-  location.reload();
-}
 
+    <p style="font-size:12px;text-align:center;margin-top:6px;color:rgba(255,255,255,.75);font-weight:700;">
+      Με τη σύνδεση αποδέχεστε τους
+      <a href="terms.html" target="_blank" style="color:#eaf1ff;text-decoration:underline;">Όρους &amp; Προϋποθέσεις</a>
+      και τους
+      <a href="rules.html" target="_blank" style="color:#eaf1ff;text-decoration:underline;">Κανόνες Παιχνιδιού</a>.
+    </p>
+  </div>
+
+  <script type="module">
+    import { supabase } from "./supabase.js";
+
+    const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
     const KEY_NEXT = "nextContestStartISO";
     const byId = (id) => document.getElementById(id);
-
-
-// --- Supabase config sanity check ---
-async function assertSupabaseWorks() {
-  try {
-    // This triggers a lightweight request; if the key is wrong you often get 401/invalid api key.
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Supabase getSession error:", error);
-      return { ok: false, error };
-    }
-    return { ok: true, data };
-  } catch (e) {
-    console.error("Supabase config exception:", e);
-    return { ok: false, error: e };
-  }
-}
 
     function setInlineMsg(id, msg){
       const el = byId(id);
@@ -206,78 +170,46 @@ async function assertSupabaseWorks() {
       setInlineMsg("regErr","");
     }
 
-    // Accepts either "YYYY-MM-DD" or full ISO like "YYYY-MM-DDTHH:mm:ssZ"
     function fmtDateGreek(isoDate){
-      const s0 = String(isoDate || "").trim();
-      if(!s0 || s0 === "null" || s0 === "undefined") return null;
-
-      // If it's exactly YYYY-MM-DD
-      if(/^\d{4}-\d{2}-\d{2}$/.test(s0)){
-        const [yy,mm,dd] = s0.split("-");
-        return `${dd}/${mm}/${yy}`;
-      }
-
-      // Otherwise, try parsing as Date (ISO with time)
-      const d = new Date(s0);
-      if(isNaN(d.getTime())) return null;
-      const dd = String(d.getDate()).padStart(2,'0');
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const yy = d.getFullYear();
+      const s = String(isoDate||"").trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+      const [yy,mm,dd] = s.split("-");
       return `${dd}/${mm}/${yy}`;
     }
 
-    // In the "localStorage only" version this may not exist.
-    // Keep a safe fallback so the login page doesn't throw.
-    async function fetchActiveContest(){
-      return null;
-    }
-
     function renderNextContest(){
-      const box = byId("nextBox");
       const raw = String(localStorage.getItem(KEY_NEXT) || "");
       const iso = raw.replace(/"/g,"").trim();
+      const pretty = fmtDateGreek(iso);
 
-      // Αν δεν υπάρχει ημερομηνία -> δείξε απλά μήνυμα
-      if(!iso){
-        if(box) box.style.display = "block";
+      if(pretty){
+        byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
+        byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
+      }else{
         byId("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
-        byId("nextSub").textContent = "";
-        return;
+        byId("nextSub").textContent = "Ο admin θα βάλει ημερομηνία από το Admin Panel.";
       }
-
-      const ms = Date.parse(iso);
-      if(!Number.isFinite(ms)){
-        if(box) box.style.display = "block";
-        byId("nextText").textContent = "Ο επόμενος διαγωνισμός θα ανακοινωθεί σύντομα";
-        byId("nextSub").textContent = "";
-        return;
-      }
-
-      const nowMs = Date.now();
-      // ✅ Αν πέρασε (ή είναι τώρα/σήμερα) -> κρύψε το box
-      if(ms <= nowMs){
-        if(box) box.style.display = "none";
-        return;
-      }
-
-      const pretty = fmtDateGreek(iso) || String(iso||"").slice(0,10) || "(δεν ορίστηκε)";
-      if(box) box.style.display = "block";
-      byId("nextText").textContent = `Ο επόμενος διαγωνισμός αρχίζει στις ${pretty}`;
-      byId("nextSub").textContent = "Μέχρι τότε μπορείς να κάνεις login κανονικά.";
     }
-
 
     
     async function showAlreadyLoggedIn(session){
-      // ✅ Αν είσαι ήδη συνδεδεμένος, ΔΕΝ μένουμε στο login.
-      // Πάμε αυτόματα στο σωστό panel (Admin ή Πελάτης).
-      try{
-        goAfterLogin(session.user);
-      }catch(e){
-        location.replace("dashboard.html");
-      }
-    }
+	    // Δείξε μήνυμα + κουμπιά αντί για auto redirect
+	    const box = byId("alreadyLoggedInBox");
+	    const msg = byId("alreadyLoggedInMsg");
+	    if(msg) msg.textContent = "✅ Είσαι ήδη συνδεδεμένος. Διάλεξε πού να πας ή κάνε logout.";
+	    if(box) box.classList.remove("hide");
 
+	    const goAdminBtn = byId("goAdminBtn");
+	    const goClientBtn = byId("goClientBtn");
+	    const doLogoutBtn = byId("doLogoutBtn");
+
+	    if(goAdminBtn) goAdminBtn.onclick = async () => { await goAfterLogin(session); };
+	    if(goClientBtn) goClientBtn.onclick = () => { location.href = "dashboard.html"; };
+	    if(doLogoutBtn) doLogoutBtn.onclick = async () => {
+	      try { await supabase.auth.signOut(); } catch(e){ console.warn(e); }
+	      location.reload();
+	    };
+    }
 
 function showLogin(){
       clearMsgs();
@@ -295,61 +227,71 @@ function showLogin(){
       byId("tabLogin").className = "btn tab";
     }
 
-    async function goAfterLogin(user) {
-  // Fetch profile (username + admin flag) from DB
-  let username = (user.email || "").split("@")[0] || "user";
-  let isAdmin = false;
+    async function goAfterLogin(session){
+      const email = String(session?.user?.email || "").toLowerCase();
+      const userId = session?.user?.id || null;
+      const username = email ? email.split("@")[0] : "user";
 
-  const { data: prof, error: profErr } = await supabase
-    .from("profiles")
-    .select("username, is_admin")
-    .eq("id", user.id)
-    .maybeSingle();
+      // 1) προσπάθεια να διαβάσουμε is_admin από profiles (αληθινό admin flag)
+      let profile = null;
+      try{
+        if(userId){
+          // try read profile by id (preferred)
+          let { data, error } = await supabase
+            .from("profiles")
+            .select("id,email,username,is_admin")
+            .eq("id", userId)
+            .maybeSingle();
 
-  if (profErr) {
-    showToast("Σφάλμα", "Δεν μπόρεσα να διαβάσω το προφίλ.", "danger");
-    console.error(profErr);
-  } else if (!prof) {
-    // If profile is missing, create it (safe defaults)
-    const insertRes = await supabase.from("profiles").insert([{
-      id: user.id,
-      username,
-      email: user.email,
-      is_admin: false
-    }]);
-    if (insertRes.error) console.error(insertRes.error);
-  } else {
-    if (prof.username) username = prof.username;
-    isAdmin = !!prof.is_admin;
-  }
+          if(error) throw error;
 
-  localStorage.setItem("session", JSON.stringify({
-    username,
-    email: user.email,
-    isAdmin
-  }));
+          // αν δεν υπάρχει profile, δημιουργούμε ένα (insert) — επιτρέπεται από τις RLS policies που έχουμε
+          if(!data){
+            const ins = await supabase
+              .from("profiles")
+              .insert({ id: userId, email, username })
+              .select("id,email,username,is_admin")
+              .single();
+            if(ins.error) throw ins.error;
+            data = ins.data;
+          }
 
-  window.location.href = isAdmin ? "admin.html" : "dashboard.html";
-}
+          profile = data || null;
+        }
+      }catch(e){
+        console.warn("Profile fetch/insert failed (will fallback to ADMIN_EMAIL):", e);
+      }
 
-async function doLogin(){
+      // 2) fallback: αν θες να έχεις 1 hardcoded admin email για να μη “κλειδώσεις” έξω
+      const hardAdmin = email && ADMIN_EMAIL && email === String(ADMIN_EMAIL).toLowerCase();
+
+      const isAdmin = !!(profile && profile.is_admin) || hardAdmin;
+
+      // ✅ αποθηκεύουμε και profile για reuse σε άλλα pages
+      if(profile) localStorage.setItem("CMP_PROFILE", JSON.stringify(profile));
+
+      // ✅ legacy session για τα υπόλοιπα pages (admin.js/dashboard κλπ)
+      localStorage.setItem("session", JSON.stringify({
+        username,
+        email,
+        isAdmin
+      }));
+
+      // redirect
+      window.location.href = isAdmin ? "admin.html" : "dashboard.html";
+    }
+
+    async function doLogin(){
       clearMsgs();
       const email = String(byId("loginEmail").value || "").trim().toLowerCase();
       const password = String(byId("loginPass").value || "");
       if(!email || !password) return setInlineMsg("loginErr","Γράψε email και password.");
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if(error){
-  const msg = String(error.message || "");
-  const status = error.status || error.code;
-  if(status === 401 || /invalid api key/i.test(msg)){
-    return setInlineMsg("loginErr","Login error: Invalid API key. Βάλε το σωστό Publishable/Anon public key στο supabase.js (όχι secret).");
-  }
-  return setInlineMsg("loginErr", `Login error: ${msg}`);
-}
+      if(error) return setInlineMsg("loginErr", `Login error: ${error.message}`);
       if(!data?.session) return setInlineMsg("loginErr","Δεν έγινε session. Δοκίμασε ξανά.");
 
-      await goAfterLogin(data.session.user);
+      await goAfterLogin(data.session);
     }
 
     async function doRegister(){
@@ -369,19 +311,13 @@ async function doLogin(){
       }
 
       // Αν κάποιος βάλει το admin email από το register, το κάνουμε admin profile
-        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
-        const isAdmin = ADMIN_EMAILS.includes(email);
+      const isAdmin = (email === ADMIN_EMAIL);
 
       // 1) Create auth user
       const { data, error } = await supabase.auth.signUp({ email, password });
       if(error){
         // Supabase errors (π.χ. "User already registered", rate limit, κτλ)
-        const msg = String(error.message || String(error) || "");
-        const status = error.status || error.code;
-        if(status === 401 || /invalid api key/i.test(msg)){
-          return setInlineMsg("regErr","Register error: Invalid API key. Βάλε το σωστό Publishable/Anon public key στο supabase.js (όχι secret).");
-        }
-        return setInlineMsg("regErr", "Register error: " + msg);
+        return setInlineMsg("regErr", "Register error: " + (error.message || String(error)));
       }
       const user = data?.user;
       if(!user?.id){
@@ -390,7 +326,7 @@ async function doLogin(){
 
       // 2) Create/Update profile row
       // Στη βάση η στήλη είναι is_admin (όχι isAdmin)
-      const baseProfile = { id: user.id, username, email, is_admin: false };
+      const baseProfile = { id: user.id, username, email, is_admin: isAdmin };
 
       // Αν το username είναι ήδη πιασμένο (unique), δοκιμάζουμε 1 φορά με suffix
       let profilePayload = baseProfile;
@@ -415,124 +351,26 @@ async function doLogin(){
       showLogin();
     }
 // INIT
-    function finishBoot(showUI=true){
-      // hide boot screen + allow UI
-      document.body.classList.remove('booting');
-      const b = byId('boot');
-      if(b) b.style.display = 'none';
-      if(!showUI){
-        const c = byId('card');
-        if(c) c.style.display = 'none';
-      }
-    }
-
     (async () => {
-      // ✅ First: session check. If logged in -> redirect, no flash.
-      try{
-        const { data: { session } } = await supabase.auth.getSession();
-        if(session && session.user){
-          const email = String(session.user.email||'').toLowerCase();
-        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
-        const isAdmin = ADMIN_EMAILS.includes(email);
-          // sync localStorage session used by the rest of the app
-          const username = (email.split('@')[0] || 'user').trim();
-          localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
-          finishBoot(false);
-          return location.replace(isAdmin ? 'admin.html' : 'dashboard.html');
-        }
-      }catch(e){
-        console.warn('getSession init error:', e);
-      }
-
-      // Not logged in -> show login UI
       showLogin();
       renderNextContest();
-      finishBoot(true);
 
-// Quick check: if the publishable (anon) key is wrong you'll get 401/Invalid API key.
-const cfg = await assertSupabaseWorks();
-if (!cfg.ok) {
-  const msg = cfg.error?.message || String(cfg.error || "");
-  setInlineMsg("loginErr","⚠️ Πρόβλημα Supabase: Έλεγξε το SUPABASE_ANON_KEY (Publishable/Anon public) στο supabase.js.\n" + msg);
-}
+      const { data: sessData, error } = await supabase.auth.getSession();
+      if (error) console.warn("getSession error:", error);
 
-      // --- Bind UI events (tabs & buttons) ---
-      byId("tabLogin").addEventListener("click", showLogin);
-      byId("tabRegister").addEventListener("click", showRegister);
+      // Αν υπάρχει ήδη session, ΔΕΝ κάνουμε auto-redirect (για να μην σε πετάει κατευθείαν στο Admin).
+      // Σου δείχνουμε επιλογές.
+      if (sessData?.session) {
+        await showAlreadyLoggedIn(sessData.session);
+      }
 
-      byId("loginBtn").addEventListener("click", doLogin);
-      byId("clearBtn").addEventListener("click", () => {
-        clearMsgs();
-        byId("loginEmail").value = "";
-        byId("loginPass").value = "";
-      });
-
-      byId("resetBtn").addEventListener("click", async () => {
-        clearMsgs();
-        const email = String(byId("loginEmail").value || "").trim().toLowerCase();
-        if (!email) return setInlineMsg("loginErr", "Γράψε πρώτα το email σου.");
-        // ✅ Redirect back to reset.html after user clicks the email link
-        const redirectTo = location.origin + location.pathname.replace(/[^\/]*$/, '') + "reset.html";
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-        if (error) return setInlineMsg("loginErr", "Reset error: " + (error.message || String(error)));
-        setInlineMsg("loginOk", "✅ Στάλθηκε email για reset password (αν το email υπάρχει).\n");
-      });
-
-      byId("regBtn").addEventListener("click", doRegister);
-      byId("regClearBtn").addEventListener("click", () => {
-        clearMsgs();
-        byId("regUser").value = "";
-        byId("regEmail").value = "";
-        byId("regPass").value = "";
-      });
-
-      // Enter = submit
-      ["loginEmail","loginPass"].forEach(id => {
-        byId(id).addEventListener("keydown", (e) => {
-          if (e.key === "Enter") doLogin();
-        });
-      });
-      ["regUser","regEmail","regPass"].forEach(id => {
-        byId(id).addEventListener("keydown", (e) => {
-          if (e.key === "Enter") doRegister();
-        });
-      });
-
-      // Auth state change: after login/logout
       supabase.auth.onAuthStateChange(async (_event, session) => {
-        if(!session){
-          // logged out -> show login UI
-          showLogin();
-          renderNextContest();
-          finishBoot(true);
-          return;
-        }
-        // logged in -> redirect (no intermediate screen)
-        const email = String(session.user?.email||'').toLowerCase();
-        const ADMIN_EMAILS = ['mariosxis1980@gmail.com'];
-        const isAdmin = ADMIN_EMAILS.includes(email);
-        finishBoot(false);
-        window.location.href = isAdmin ? "admin.html" : "dashboard.html";
+        // Όταν αλλάξει auth state, αν υπάρχει session δείξε επιλογές.
+        if (session) await showAlreadyLoggedIn(session);
       });
 
       console.log("SUPABASE OK");
     })();;
   </script>
-
-<script type="module">
-import { ensureSupabaseConfig, clearSupabaseConfig } from './supabase.js';
-
-window.addEventListener('load', async () => {
-  try {
-    await ensureSupabaseConfig();
-  } catch (e) {
-    console.warn('Supabase config invalid, clearing and asking again', e);
-    clearSupabaseConfig();
-    alert('Βάλε ξανά σωστό Supabase Project URL και anon key.');
-    location.reload();
-  }
-});
-</script>
-
 </body>
 </html>

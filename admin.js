@@ -214,7 +214,6 @@ async function syncContestToSupabase() {
     const payload = {
       code: cid,
       round: Number(mta.round || 1),
-      active: !!activeFlag,
       published: !!published,
       prize_text: (mta.prizeText || null),
       started_at: (mta.startedAt ? new Date(Number(mta.startedAt)).toISOString() : null),
