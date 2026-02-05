@@ -1,14 +1,7 @@
-import { getSupabase, clearSupabaseConfig } from "./supabase.js";
+import { getSupabase } from "./supabase.js";
 
-let supabase;
-try {
-  supabase = await getSupabase();
-} catch (e) {
-  console.error("Supabase config missing/invalid:", e);
-  alert("Δεν βρέθηκε σωστό Supabase URL / Anon key. Πήγαινε στη Login σελίδα και βάλε τα σωστά στοιχεία.");
-  location.replace("login.html");
-  throw e;
-}
+// Create supabase client (will prompt for URL/KEY if not set)
+const supabase = await getSupabase();
 
 /* =========================
    ✅ SUPABASE SESSION -> localStorage session (app-wide)
@@ -24,23 +17,29 @@ if (!session || !session.user) {
 const email = String(session.user.email || "").toLowerCase();
 const username = (email.split("@")[0] || "user").trim();
 
-// Admin flag comes from DB (profiles.is_admin)
+// Admin flag comes from DB (users.is_admin)
 let isAdmin = false;
 try {
-  const { data: prof, error: profErr } = await supabase
+  const { data: row, error: rowErr } = await supabase
     .from("users")
-    .select("is_admin")
-    .eq("id", session.user.id)
+    .select("username, is_admin")
+    .eq("email", email)
     .maybeSingle();
 
-  isAdmin = !!prof?.is_admin;
+  if (rowErr) console.warn("users lookup:", rowErr);
+  isAdmin = !!row?.is_admin;
 
-  // keep local session consistent
-  localStorage.setItem("session", JSON.stringify({ username, email, isAdmin }));
+  // keep local session consistent (legacy)
+  localStorage.setItem("session", JSON.stringify({ username: row?.username || username, email, isAdmin }));
 
-  if (!isAdmin) {
-    window.location.href = "dashboard.html";
-  }
+  // app-friendly keys
+  localStorage.setItem("CMP_USER", JSON.stringify({ id: session.user.id, email }));
+  localStorage.setItem(
+    "CMP_PROFILE",
+    JSON.stringify({ username: row?.username || username, email, is_admin: isAdmin })
+  );
+
+  if (!isAdmin) window.location.href = "dashboard.html";
 } catch (e) {
   console.error(e);
   window.location.href = "dashboard.html";
@@ -205,7 +204,6 @@ async function syncContestToSupabase() {
     const mta = getMeta(cid) || {};
 
     const published = (mta.contestStarted === true) && (mta.matchesLocked === true);
-    const activeFlag = (mta.contestStarted === true);
 
     // deadline = 10' πριν τον 1ο ON αγώνα
     const dlMs = deadlineMsFromMatches(matches);

@@ -4,8 +4,15 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
+// Optional legacy key used in some older files
+export const CONFIG_KEY = "CMP_SUPABASE_CONFIG";
+
 const LS_URL_KEY = "CMP_SUPABASE_URL";
 const LS_ANON_KEY = "CMP_SUPABASE_ANON_KEY";
+
+// Expose keys for other modules (backwards-compatible)
+export const URL_KEY = LS_URL_KEY;
+export const ANON_KEY = LS_ANON_KEY;
 
 // (Προαιρετικά) βάλε εδώ default τιμές αν θες να μην ζητά prompt.
 // Άφησέ τα κενά αν θες να τα βάζεις μόνος σου μια φορά.
@@ -84,5 +91,8 @@ export async function getSupabase() {
   return _client;
 }
 
-// Convenience: ready-to-use client (uses stored URL/KEY or prompts once)
+// ------------------------------------------------------------
+// ✅ Compatibility export
+// Some pages import `{ supabase }` directly. We provide it here
+// using top-level await (supported in ES modules).
 export const supabase = await getSupabase();
