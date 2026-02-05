@@ -1,17 +1,13 @@
-import { supabase } from './supabase.js';
+import { getSupabase, clearSupabaseConfig } from "./supabase.js";
 
-const profileRaw = localStorage.getItem('CMP_PROFILE');
-
-if (!profileRaw) {
-  window.location.href = 'login.html';
-}
-
-const profile = JSON.parse(profileRaw);
-
-if (!profile.is_admin) {
-  alert('Δεν είσαι admin');
-  window.location.href = 'dashboard.html';
-
+let supabase;
+try {
+  supabase = await getSupabase();
+} catch (e) {
+  console.error("Supabase config missing/invalid:", e);
+  alert("Δεν βρέθηκε σωστό Supabase URL / Anon key. Πήγαινε στη Login σελίδα και βάλε τα σωστά στοιχεία.");
+  location.replace("login.html");
+  throw e;
 }
 
 /* =========================
@@ -32,7 +28,7 @@ const username = (email.split("@")[0] || "user").trim();
 let isAdmin = false;
 try {
   const { data: prof, error: profErr } = await supabase
-    .from("profiles")
+    .from("users")
     .select("is_admin")
     .eq("id", session.user.id)
     .maybeSingle();
