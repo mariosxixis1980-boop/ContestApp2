@@ -73,13 +73,15 @@
     // =============================
     // SUPABASE CONFIG
     // =============================
-    const SUPABASE_URL = "ΒΑΛΕ_ΕΔΩ_TO_SUPABASE_URL";
-    const SUPABASE_ANON_KEY = "ΒΑΛΕ_ΕΔΩ_TO_ANON_KEY";
+   <script>
+  const SUPABASE_URL = "https://abcd1234.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....";
 
-    const supabase = window.supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY
-    );
+  const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
+
 
     const msg = document.getElementById("msg");
 
