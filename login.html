@@ -250,7 +250,11 @@ async function showAlreadyLoggedIn(supabase, session){
   // Tabs
   $('tabLogin')?.addEventListener('click', () => setActiveTab('login'));
   $('tabRegister')?.addEventListener('click', () => setActiveTab('register'));
+  // (Προαιρετικό) κουμπί CLEAR για να σβήσεις τα saved Supabase settings (Project URL & Anon Key).
+  $('clearSupabaseBtn')?.addEventListener('click', () => {
+    clearSupabaseConfig();
     alert('Έγινε clear τα Supabase settings. Κάνε refresh για να στα ζητήσει ξανά.');
+    location.reload();
   });
 
   let supabase;
