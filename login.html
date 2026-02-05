@@ -84,8 +84,6 @@
       <button class="btn a tab" id="tabLogin" type="button">Είσοδος</button>
       <button class="btn tab" id="tabRegister" type="button">Εγγραφή</button>
     </div>
-	  <div id="msg" class="mini" style="margin-top:10px;color:#f1c40f;display:none;"></div>
-    </div>
 
     <!-- Αν υπάρχει ήδη ενεργό Supabase session, δείχνουμε επιλογές (δεν σε πετάμε αυτόματα στο admin) -->
     <div id="alreadyLoggedInBox" class="box hide">
@@ -148,68 +146,216 @@
     </p>
   </div>
 
- <script type="module">
-  import { getSupabase } from "./supabase.js";
+  <script type="module">
+import { getSupabase, clearSupabaseConfig } from './supabase.js';
 
-  let supabase = null;
+const $ = (id) => document.getElementById(id);
 
-  const loginBtn = document.getElementById("loginBtn");
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-  const msg = document.getElementById("msg");
+function show(el, on=true){ if(!el) return; el.classList.toggle('hide', !on); }
+function setText(el, txt){ if(!el) return; el.textContent = txt ?? ''; }
 
-  // init supabase ΜΙΑ ΦΟΡΑ
-  async function init() {
+function setLoginErr(txt){ setText($('loginErr'), txt); show($('loginErr'), !!txt); }
+function setRegErr(txt){ setText($('regErr'), txt); show($('regErr'), !!txt); }
+function setRegOk(txt){ setText($('regOk'), txt); show($('regOk'), !!txt); }
+
+function setActiveTab(which){
+  const tabLogin = $('tabLogin');
+  const tabRegister = $('tabRegister');
+  const loginBox = $('loginBox');
+  const registerBox = $('registerBox');
+
+  if (which === 'register'){
+    tabRegister?.classList.add('active');
+    tabLogin?.classList.remove('active');
+    show(registerBox, true);
+    show(loginBox, false);
+    setLoginErr('');
+  } else {
+    tabLogin?.classList.add('active');
+    tabRegister?.classList.remove('active');
+    show(loginBox, true);
+    show(registerBox, false);
+    setRegErr(''); setRegOk('');
+  }
+}
+
+async function fetchProfileByEmail(supabase, email){
+  if(!email) return null;
+  const { data, error } = await supabase
+    .from('users')
+    .select('username, is_admin')
+    .eq('email', email)
+    .maybeSingle();
+
+  if(error) {
+    console.warn('profile fetch error:', error);
+    return null;
+  }
+  return data || null;
+}
+
+function saveSession(user, profile){
+  try{
+    localStorage.setItem('CMP_USER', JSON.stringify(user));
+    localStorage.setItem('CMP_PROFILE', JSON.stringify(profile));
+  }catch(e){
+    console.warn('localStorage save error:', e);
+  }
+}
+
+function clearSession(){
+  try{
+    localStorage.removeItem('CMP_USER');
+    localStorage.removeItem('CMP_PROFILE');
+  }catch(e){}
+}
+
+function gotoByRole(profile){
+  if(profile?.is_admin === true) {
+    window.location.href = 'admin.html';
+    return;
+  }
+  window.location.href = 'dashboard.html';
+}
+
+async function showAlreadyLoggedIn(supabase, session){
+  const box = $('alreadyLoggedInBox');
+  const msg = $('alreadyLoggedInMsg');
+  const btnAdmin = $('goAdminBtn');
+  const btnDash = $('goClientBtn');
+  const btnLogout = $('doLogoutBtn');
+
+  const email = session?.user?.email || '';
+  const prof = (await fetchProfileByEmail(supabase, email)) || { username: email.split('@')[0] || 'user', is_admin: false };
+
+  setText(msg, `Είσαι ήδη συνδεδεμένος ως: ${prof.username} (${email})`);
+  show(box, true);
+
+  // Αν είναι admin, δείχνουμε "Πήγαινε Admin", αλλιώς "Πήγαινε Dashboard"
+  show(btnAdmin, prof.is_admin === true);
+  show(btnDash, prof.is_admin !== true);
+
+  btnAdmin?.addEventListener('click', () => gotoByRole({ ...prof, is_admin: true }));
+  btnDash?.addEventListener('click', () => gotoByRole({ ...prof, is_admin: false }));
+
+  btnLogout?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    clearSession();
+    show(box, false);
+    setActiveTab('login');
+  });
+}
+
+(async function init(){
+  // Tabs
+  $('tabLogin')?.addEventListener('click', () => setActiveTab('login'));
+  $('tabRegister')?.addEventListener('click', () => setActiveTab('register'));
+    alert('Έγινε clear τα Supabase settings. Κάνε refresh για να στα ζητήσει ξανά.');
+  });
+
+  let supabase;
+  try {
     supabase = await getSupabase();
-    console.log("Supabase ready");
+    console.log('Supabase ready');
+  } catch (e) {
+    console.error(e);
+    setLoginErr('Δεν βρέθηκαν σωστά Supabase settings.');
+    return;
   }
 
-  await init();
+  // Αν υπάρχει session, δείξε επιλογές (δεν κάνουμε auto-redirect)
+  try{
+    const { data, error } = await supabase.auth.getSession();
+    if(error) console.warn('getSession error:', error);
+    if(data?.session){
+      await showAlreadyLoggedIn(supabase, data.session);
+    }
+  }catch(e){
+    console.warn('getSession exception:', e);
+  }
 
-  loginBtn.onclick = async () => {
-    if (!supabase) {
-      msg.textContent = "Supabase not ready";
+  // LOGIN
+  $('loginBtn')?.addEventListener('click', async () => {
+    setLoginErr('');
+    const email = $('loginEmail')?.value?.trim() || '';
+    const password = $('loginPass')?.value || '';
+
+    if(!email || !password){
+      setLoginErr('Βάλε Email και Password.');
       return;
     }
 
-    msg.textContent = "Σύνδεση...";
-
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      msg.textContent = "Login error: " + error.message;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error){
+      setLoginErr('Login error: ' + error.message);
       return;
     }
 
-    const user = data.user;
+    const user = data?.user;
+    const prof = (await fetchProfileByEmail(supabase, email)) || { username: email.split('@')[0] || 'user', is_admin: false };
+    saveSession(user, prof);
+    gotoByRole(prof);
+  });
 
-    const { data: profile, error: perr } = await supabase
-      .from("users")
-      .select("username, is_admin")
-      .eq("email", user.email)
-      .single();
+  $('clearBtn')?.addEventListener('click', () => {
+    if($('loginEmail')) $('loginEmail').value = '';
+    if($('loginPass')) $('loginPass').value = '';
+    setLoginErr('');
+  });
 
-    if (perr) {
-      msg.textContent = "Profile error";
+  $('resetBtn')?.addEventListener('click', async () => {
+    setLoginErr('');
+    const email = $('loginEmail')?.value?.trim() || '';
+    if(!email){
+      setLoginErr('Γράψε πρώτα Email για Reset Password.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if(error){
+      setLoginErr('Reset error: ' + error.message);
+      return;
+    }
+    setLoginErr('Σου στάλθηκε email για reset (αν επιτρέπεται από τα Auth settings).');
+  });
+
+  // REGISTER
+  $('regBtn')?.addEventListener('click', async () => {
+    setRegErr(''); setRegOk('');
+    const username = $('regUser')?.value?.trim() || '';
+    const email = $('regEmail')?.value?.trim() || '';
+    const password = $('regPass')?.value || '';
+
+    if(!email || !password){
+      setRegErr('Βάλε Email και Password.');
       return;
     }
 
-    localStorage.setItem("CMP_USER", JSON.stringify(user));
-    localStorage.setItem("CMP_PROFILE", JSON.stringify(profile));
-
-    if (profile.is_admin === true) {
-      window.location.href = "admin.html";
-    } else {
-      window.location.href = "dashboard.html";
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if(error){
+      setRegErr('Register error: ' + error.message);
+      return;
     }
-  };
+
+    // Προσπαθούμε να γράψουμε και στο users table (μπορεί να αποτύχει λόγω RLS)
+    try{
+      await supabase.from('users').upsert([{ email, username: username || email.split('@')[0], is_admin: false }], { onConflict: 'email' });
+    }catch(e){}
+
+    setRegOk('Έγινε εγγραφή. Κάνε Login.');
+    setActiveTab('login');
+    if($('loginEmail')) $('loginEmail').value = email;
+  });
+
+  $('regClearBtn')?.addEventListener('click', () => {
+    if($('regUser')) $('regUser').value = '';
+    if($('regEmail')) $('regEmail').value = '';
+    if($('regPass')) $('regPass').value = '';
+    setRegErr(''); setRegOk('');
+  });
+
+  // default tab
+  setActiveTab('login');
+})();
 </script>
-
 </body>
 </html>
