@@ -671,7 +671,8 @@ async function boot(){
   if (error) console.warn('getSession error:', error);
   const session = data?.session;
   if (!session?.user) {
-    location.replace('login.html');
+    // ✅ Μην κάνεις ακαριαίο redirect (αυτό σε συνδυασμό με auto-redirect στο login κάνει loop).
+    try { window.N?.('⚠️ Δεν βρέθηκε ενεργή σύνδεση. Πάτα Logout/Refresh ή γύρνα στο Login.', 'err'); } catch(e) {}
     return;
   }
 

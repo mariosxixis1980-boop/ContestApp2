@@ -229,7 +229,7 @@ async function redirectByRole(user){
   location.replace(isAdmin ? "admin.html" : "dashboard.html");
 }
 
-// ---------- Auto session ----------
+// ---------- Auto session (NO auto redirect) ----------
 (async () => {
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn("getSession error", error);
@@ -240,8 +240,15 @@ async function redirectByRole(user){
     return;
   }
 
-  // Αν είσαι ήδη συνδεδεμένος, πάμε κατευθείαν εκεί που πρέπει (χωρίς να δείχνει "είσαι ήδη συνδεδεμένος")
-  await redirectByRole(session.user);
+  // ✅ Αν υπάρχει session, ΔΕΝ κάνουμε auto-redirect (σπάει το loop).
+  // Δείχνουμε επιλογές: Admin / Πελάτης / Logout
+  loginBox?.classList.add("hide");
+  registerBox?.classList.add("hide");
+  alreadyBox?.classList.remove("hide");
+
+  const em = session.user.email || "";
+  const msgEl = $("alreadyLoggedInMsg");
+  if (msgEl) msgEl.textContent = `✅ Είσαι ήδη συνδεδεμένος${em ? " ως " + em : ""}. Διάλεξε που θες να μπεις:`;
 })();
 
 // ---------- Login ----------
