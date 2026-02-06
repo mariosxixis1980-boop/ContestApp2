@@ -109,11 +109,9 @@
       msg.textContent = "✅ Ο κωδικός άλλαξε! Μεταφέρεσαι στο login...";
       msg.style.color = "#7CFFB2";
 
-      try { await supabase.auth.signOut(); } catch(e) {}
-      try { localStorage.removeItem("session"); } catch(e) {}
       setTimeout(() => {
-        location.replace("login.html");
-      }, 700);
+        location.href = "login.html";
+      }, 1500);
     });
   </script>
 </body>
