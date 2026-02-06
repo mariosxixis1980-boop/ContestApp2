@@ -609,15 +609,15 @@ import { supabase } from "./supabase.js";
 
 
 
-async function waitForSession(ms = 1500){
+async function waitForSession(ms = 2000){
   const start = Date.now();
-  // 1) immediate try
+  // immediate try
   const first = await supabase.auth.getSession();
   if (first?.data?.session?.user) return first.data.session;
 
-  // 2) wait for auth state change up to ms
   return await new Promise((resolve) => {
     let settled = false;
+
     const timer = setTimeout(async () => {
       if (settled) return;
       settled = true;
@@ -705,12 +705,14 @@ async function boot(){
   if (error) console.warn('getSession error:', error);
   let session = data?.session;
 
+  // ✅ περίμενε λίγο για auth state ώστε να μην κάνει login<->dashboard loop
   if (!session?.user) {
-    session = await waitForSession(1500);
+    session = await waitForSession(2000);
   }
+
   if (!session?.user) {
-    // ✅ Μην προκαλείς loop. Μείνε εδώ και άφησε τον χρήστη να πατήσει Logout ή να πάει Login.
-    try { N('⚠️ Δεν βρέθηκε ενεργή σύνδεση. Πήγαινε Login ή κάνε Logout.', 'err'); } catch(e) {}
+    try { N('⚠️ Δεν βρέθηκε ενεργή σύνδεση. Πάτα Logout ή γύρνα στο Login.', 'err'); } catch(e) {}
+    // μην κάνεις redirect εδώ (κόβει το loop)
     return;
   }
 
