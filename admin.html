@@ -1,1 +1,96 @@
-<h1>Admin Panel CMP</h1><a href='login.html'>Logout</a>
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel CMP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      margin: 0;
+    }
+    header {
+      padding: 15px;
+      background: #020617;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    nav {
+      background: #020617;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    nav button {
+      padding: 8px 14px;
+      background: #2563eb;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    nav button:hover {
+      background: #1d4ed8;
+    }
+    main {
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h2>Admin Panel CMP</h2>
+  <button id="logoutBtn">Logout</button>
+</header>
+
+<nav>
+  <button onclick="showSection('matches')">Αγώνες</button>
+  <button onclick="showSection('contests')">Διαγωνισμοί</button>
+  <button onclick="showSection('users')">Χρήστες</button>
+</nav>
+
+<main id="content">
+  <h3>Καλωσήρθες στο Admin Panel</h3>
+  <p>Επέλεξε ενότητα.</p>
+</main>
+
+<script type="module">
+  import { supabase } from './supabase.js';
+
+  // 🔒 PROTECTION
+  const sessionRaw = localStorage.getItem('session');
+  if (!sessionRaw) location.href = 'login.html';
+
+  const session = JSON.parse(sessionRaw);
+  if (!session.is_admin) location.href = 'login.html';
+
+  // LOGOUT
+  document.getElementById('logoutBtn').onclick = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    location.href = 'login.html';
+  };
+
+  // NAVIGATION
+  window.showSection = (section) => {
+    const content = document.getElementById('content');
+
+    if (section === 'matches') {
+      content.innerHTML = `<h3>Αγώνες</h3><p>(εδώ θα μπουν αγώνες)</p>`;
+    }
+
+    if (section === 'contests') {
+      content.innerHTML = `<h3>Διαγωνισμοί</h3><p>(εδώ θα μπουν διαγωνισμοί)</p>`;
+    }
+
+    if (section === 'users') {
+      content.innerHTML = `<h3>Χρήστες</h3><p>(εδώ θα μπουν users)</p>`;
+    }
+  };
+</script>
+
+</body>
+</html>
