@@ -78,19 +78,44 @@
   window.showSection = (section) => {
     const content = document.getElementById('content');
 
-    if (section === 'matches') {
-      content.innerHTML = `<h3>Αγώνες</h3><p>(εδώ θα μπουν αγώνες)</p>`;
+  if (section === 'matches') {
+  content.innerHTML = `
+    <h3>Δημιουργία Αγώνα</h3>
+
+    <input id="homeTeam" placeholder="Γηπεδούχος" /><br><br>
+    <input id="awayTeam" placeholder="Φιλοξενούμενος" /><br><br>
+    <input id="matchDate" type="datetime-local" /><br><br>
+
+    <button id="saveMatch">Αποθήκευση Αγώνα</button>
+
+    <p id="msg"></p>
+  `;
+
+  document.getElementById('saveMatch').onclick = async () => {
+    const home = document.getElementById('homeTeam').value.trim();
+    const away = document.getElementById('awayTeam').value.trim();
+    const date = document.getElementById('matchDate').value;
+    const msg = document.getElementById('msg');
+
+    if (!home || !away || !date) {
+      msg.textContent = 'Συμπλήρωσε όλα τα πεδία';
+      return;
     }
 
-    if (section === 'contests') {
-      content.innerHTML = `<h3>Διαγωνισμοί</h3><p>(εδώ θα μπουν διαγωνισμοί)</p>`;
-    }
+    const { error } = await supabase
+      .from('matches')
+      .insert([{ home_team: home, away_team: away, match_date: date }]);
 
-    if (section === 'users') {
-      content.innerHTML = `<h3>Χρήστες</h3><p>(εδώ θα μπουν users)</p>`;
+    if (error) {
+      msg.textContent = error.message;
+    } else {
+      msg.textContent = '✅ Ο αγώνας αποθηκεύτηκε';
     }
   };
+}
+ 
 </script>
 
 </body>
 </html>
+
