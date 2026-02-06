@@ -229,7 +229,18 @@ async function redirectByRole(user){
   location.replace(isAdmin ? "admin.html" : "dashboard.html");
 }
 
-// ---------- Auto session (NO auto redirect) ----------
+
+function showAlready(user){
+  const email = String(user?.email || "");
+  if (alreadyBox){
+    alreadyBox.classList.remove("hide");
+    if (alreadyMsg) alreadyMsg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
+  }
+  if (loginBox) loginBox.classList.add("hide");
+  if (registerBox) registerBox.classList.add("hide");
+}
+
+// ---------- Auto session (NO auto-redirect to avoid loops) ----------
 (async () => {
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn("getSession error", error);
@@ -240,15 +251,9 @@ async function redirectByRole(user){
     return;
   }
 
-  // ✅ Αν υπάρχει session, ΔΕΝ κάνουμε auto-redirect (σπάει το loop).
-  // Δείχνουμε επιλογές: Admin / Πελάτης / Logout
-  loginBox?.classList.add("hide");
-  registerBox?.classList.add("hide");
-  alreadyBox?.classList.remove("hide");
-
-  const em = session.user.email || "";
-  const msgEl = $("alreadyLoggedInMsg");
-  if (msgEl) msgEl.textContent = `✅ Είσαι ήδη συνδεδεμένος${em ? " ως " + em : ""}. Διάλεξε που θες να μπεις:`;
+  // ✅ Αν υπάρχει session, ΔΕΝ κάνουμε auto redirect (για να μην γίνει login<->dashboard loop).
+  // Δείχνουμε επιλογές στον χρήστη.
+  showAlready(session.user);
 })();
 
 // ---------- Login ----------

@@ -607,6 +607,40 @@ render();
 <script type="module">
 import { supabase } from "./supabase.js";
 
+
+
+async function waitForSession(ms = 1500){
+  const start = Date.now();
+  // 1) immediate try
+  const first = await supabase.auth.getSession();
+  if (first?.data?.session?.user) return first.data.session;
+
+  // 2) wait for auth state change up to ms
+  return await new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(async () => {
+      if (settled) return;
+      settled = true;
+      try{
+        const again = await supabase.auth.getSession();
+        resolve(again?.data?.session || null);
+      }catch(e){
+        resolve(null);
+      }
+    }, ms);
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (settled) return;
+      if (session?.user){
+        settled = true;
+        clearTimeout(timer);
+        sub?.subscription?.unsubscribe?.();
+        resolve(session);
+      }
+    });
+  });
+}
+
 /* =====================================================
    ✅ BOOT (SUPABASE)
    1) κρατάει login/session σωστό
@@ -669,10 +703,14 @@ async function boot(){
   // 1) session
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn('getSession error:', error);
-  const session = data?.session;
+  let session = data?.session;
+
   if (!session?.user) {
-    // ✅ Μην κάνεις ακαριαίο redirect (αυτό σε συνδυασμό με auto-redirect στο login κάνει loop).
-    try { window.N?.('⚠️ Δεν βρέθηκε ενεργή σύνδεση. Πάτα Logout/Refresh ή γύρνα στο Login.', 'err'); } catch(e) {}
+    session = await waitForSession(1500);
+  }
+  if (!session?.user) {
+    // ✅ Μην προκαλείς loop. Μείνε εδώ και άφησε τον χρήστη να πατήσει Logout ή να πάει Login.
+    try { N('⚠️ Δεν βρέθηκε ενεργή σύνδεση. Πήγαινε Login ή κάνε Logout.', 'err'); } catch(e) {}
     return;
   }
 
