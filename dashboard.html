@@ -607,38 +607,6 @@ render();
 <script type="module">
 import { supabase } from "./supabase.js";
 
-
-
-async function waitForSession(ms = 2500){
-  const first = await supabase.auth.getSession();
-  if (first?.data?.session?.user) return first.data.session;
-
-  return await new Promise((resolve) => {
-    let settled = false;
-
-    const timer = setTimeout(async () => {
-      if (settled) return;
-      settled = true;
-      try{
-        const again = await supabase.auth.getSession();
-        resolve(again?.data?.session || null);
-      }catch(e){
-        resolve(null);
-      }
-    }, ms);
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (settled) return;
-      if (session?.user){
-        settled = true;
-        clearTimeout(timer);
-        sub?.subscription?.unsubscribe?.();
-        resolve(session);
-      }
-    });
-  });
-}
-
 /* =====================================================
    ✅ BOOT (SUPABASE)
    1) κρατάει login/session σωστό
@@ -656,9 +624,6 @@ async function waitForSession(ms = 2500){
 
    Αν δεν υπάρχουν meta/matches, η σελίδα θα πέσει σε fallback (localStorage).
 ===================================================== */
-
-const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
 const K = {
   S:'session',A:'activeContest',M:'contestMatches',META:'contestMeta'
 };
@@ -701,16 +666,9 @@ async function boot(){
   // 1) session
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn('getSession error:', error);
-  let session = data?.session;
-
-  // ✅ Περίμενε λίγο μήπως το session εμφανιστεί με καθυστέρηση μετά από redirect.
+  const session = data?.session;
   if (!session?.user) {
-    session = await waitForSession(2500);
-  }
-
-  if (!session?.user) {
-    // ✅ Μην κάνεις redirect πίσω στο login (κόβει το loop).
-    try { N('⚠️ Δεν βρέθηκε ενεργή σύνδεση. Πάτα Logout ή γύρνα στο Login.', 'err'); } catch(e) {}
+    location.replace('login.html');
     return;
   }
 
