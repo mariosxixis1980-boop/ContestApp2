@@ -1,10 +1,26 @@
 import { supabase } from "./supabase.js";
 
+
+// ✅ Admin guard (Supabase profiles.is_admin)
+const { data: sessData, error: sessErr } = await supabase.auth.getSession();
+if (sessErr) console.warn('getSession error:', sessErr);
+const user = sessData?.session?.user;
+if (!user) { location.replace('login.html'); return; }
+
+const { data: profile, error: pErr } = await supabase
+  .from('profiles')
+  .select('is_admin, username, email')
+  .eq('id', user.id)
+  .single();
+
+if (pErr || !profile?.is_admin) {
+  location.replace('dashboard.html');
+  return;
+}
+
 /* =========================
    ✅ SUPABASE SESSION -> localStorage session (app-wide)
 ========================= */
-const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
 const { data: { session }, error: sessErr } = await supabase.auth.getSession();
 if (sessErr) console.warn("getSession error:", sessErr);
 

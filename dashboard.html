@@ -672,11 +672,34 @@ async function boot(){
     return;
   }
 
-  // 2) local session για το UI
+  // 2) profile role (από Supabase) + local session για το UI
   const email = String(session.user.email || '').toLowerCase();
-  const username = (email.split('@')[0] || 'user').trim();
-  const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
+
+  const { data: profile, error: pErr } = await supabase
+    .from('profiles')
+    .select('username,is_admin')
+    .eq('id', session.user.id)
+    .single();
+
+  if (pErr || !profile) {
+    try { N('❌ Δεν μπορώ να διαβάσω το profile σου. Γίνεται logout.', 'err'); } catch(e) {}
+    await supabase.auth.signOut();
+    localStorage.removeItem('session');
+    location.replace('login.html');
+    return;
+  }
+
+  // Αν είναι admin, μην είναι εδώ
+  if (profile.is_admin) {
+    location.replace('admin.html');
+    return;
+  }
+
+  const username = String(profile.username || (email.split('@')[0] || 'user')).trim();
+  const isAdmin = false;
   localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
+
+
 
   // 3) users list (για τον admin πίνακα)
   try{
