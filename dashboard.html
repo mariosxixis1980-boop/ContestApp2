@@ -607,6 +607,15 @@ render();
 <script type="module">
 import { supabase } from "./supabase.js";
 
+
+async function hardLogout(){
+  try { await supabase.auth.signOut(); } catch(e){}
+  localStorage.clear();
+  sessionStorage.clear();
+  /* no redirect to login from dashboard */
+}
+
+
 /* =====================================================
    ✅ BOOT (SUPABASE)
    1) κρατάει login/session σωστό
@@ -668,8 +677,9 @@ async function boot(){
   if (error) console.warn('getSession error:', error);
   const session = data?.session;
   if (!session?.user) {
-    location.replace('login.html');
-    return;
+    /* no redirect in dashboard */
+      document.body.innerHTML = '<h2 style="color:white;font-family:Arial; padding:20px">⛔ Δεν είσαι συνδεδεμένος</h2>'; 
+      return;
   }
 
   // 2) role από profiles (ΟΧΙ admin email hacks)
@@ -691,8 +701,9 @@ async function boot(){
     // Αν δεν μπορούμε να διαβάσουμε profile, κάνουμε sign out για να μην κάνει loop
     try{ await supabase.auth.signOut(); }catch(_){}
     localStorage.removeItem('session');
-    location.replace('login.html?logged_out=1');
-    return;
+    /* no redirect in dashboard */
+      document.body.innerHTML = '<h2 style="color:white;font-family:Arial; padding:20px">⛔ Δεν είσαι συνδεδεμένος</h2>'; 
+      return;
   }
 
   const username = String(profile?.username || fallbackUsername).trim();
@@ -701,8 +712,8 @@ async function boot(){
   // Αν είναι admin, δεν πρέπει να βλέπει customer dashboard
   if (isAdmin){
     localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
-    location.replace('admin.html');
-    return;
+    /* admin detected; dashboard will just stop here */
+      return;
   }
 
   // 3) local session για το UI
@@ -715,8 +726,8 @@ async function boot(){
       try { await supabase.auth.signOut(); } catch(e) {}
       localStorage.removeItem('session');
       sessionStorage.clear();
-      location.replace('login.html?logged_out=1');
-    });
+      /* no redirect to login from dashboard */
+});
   }
 
   // 5) LOAD PUBLISHED+ACTIVE contest από Supabase    

@@ -135,6 +135,7 @@ import { supabase } from "./supabase.js";
 
 
 function showAlready(input){
+  const email = (typeof input === 'string') ? input : (input?.email || '');
   const email = (typeof input === "string") ? input : (input?.email || "");
   const box = document.getElementById("alreadyLoggedInBox");
   const msg = document.getElementById("alreadyLoggedInMsg");
@@ -147,6 +148,18 @@ function showAlready(input){
   if (registerBox) registerBox.classList.add("hide");
 }
 
+
+
+async function hardLogout(){
+  try { await await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      location.replace('login.html?logged_out=1');
+} catch(e){}
+  localStorage.clear();
+  sessionStorage.clear();
+  location.replace("login.html?logged_out=1");
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -246,7 +259,9 @@ async function redirectByRole(user){
 
 // ---------- Auto session ----------
 (async () => {
-  const qs = new URLSearchParams(location.search);
+      const qs = new URLSearchParams(location.search);
+      if (qs.get('logged_out') === '1') return;
+const qs = new URLSearchParams(location.search);
   if (qs.get('logged_out') === '1') return;
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn("getSession error", error);
@@ -258,7 +273,8 @@ async function redirectByRole(user){
   }
 
   // Αν είσαι ήδη συνδεδεμένος, πάμε κατευθείαν εκεί που πρέπει (χωρίς να δείχνει "είσαι ήδη συνδεδεμένος")
-  await redirectByRole(session.user);
+  showAlready(session.user);
+      return;
 })();
 
 // ---------- Login ----------
@@ -274,7 +290,8 @@ $("loginBtn")?.addEventListener("click", async () => {
   if (!user) { setBox(loginErr, "Κάτι πήγε λάθος. Δοκίμασε ξανά."); return; }
 
   setBox(loginErr, "Σύνδεση OK ✅", true);
-  await redirectByRole(user);
+  showAlready(user);
+      return;
 });
 
 passInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("loginBtn")?.click(); });
@@ -337,8 +354,11 @@ $("regClearBtn")?.addEventListener("click", () => {
 
 // ---------- Existing buttons (if present) ----------
 doLogoutBtn?.addEventListener("click", async () => {
-  await supabase.auth.signOut();
-  location.reload();
+  await await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      location.replace('login.html?logged_out=1');
+location.reload();
 });
 goAdminBtn?.addEventListener("click", () => location.replace("admin.html"));
 goClientBtn?.addEventListener("click", () => location.replace("dashboard.html"));
