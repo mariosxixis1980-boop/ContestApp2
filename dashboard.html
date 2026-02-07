@@ -5,34 +5,332 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>CMP Dashboard</title>
   <style>
-    body{font-family:Arial,system-ui;background:#0f172a;color:#fff;margin:0;padding:20px}
-    header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-    button{padding:10px 14px;border-radius:10px;border:0;background:#2563eb;color:#fff;cursor:pointer}
-    button:hover{background:#1d4ed8}
-    .card{margin-top:14px;background:#020617;border:1px solid #1f2937;border-radius:14px;padding:14px}
-    .muted{opacity:.8}
+    :root{
+      --bg:#0f172a;
+      --panel:#020617;
+      --panel2:#0b1220;
+      --border:#1f2937;
+      --text:#ffffff;
+      --muted: rgba(255,255,255,.75);
+      --btn:#2563eb;
+      --btn2:#334155;
+      --ok:#16a34a;
+      --warn:#f59e0b;
+      --err:#ef4444;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; padding:20px;
+      font-family: Arial, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(900px 500px at 20% 10%, rgba(37,99,235,.18), transparent 60%),
+                  radial-gradient(900px 500px at 80% 20%, rgba(16,185,129,.14), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:1100px;margin:0 auto}
+    header{
+      background: linear-gradient(90deg, rgba(2,6,23,.95), rgba(2,6,23,.75));
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      padding:16px 18px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:44px;height:44px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(37,99,235,.95), rgba(16,185,129,.85));
+      display:flex; align-items:center; justify-content:center;
+      font-weight:800;
+      box-shadow: 0 10px 20px rgba(0,0,0,.25);
+    }
+    .brand h1{font-size:20px;margin:0}
+    .brand .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    button{
+      border:0; cursor:pointer; color:#fff;
+      padding:10px 14px; border-radius:12px;
+      background: var(--btn);
+      transition: transform .06s ease, filter .2s ease;
+    }
+    button:hover{filter:brightness(1.06)}
+    button:active{transform: translateY(1px)}
+    .btn-secondary{background:var(--btn2)}
+    .grid{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns:1fr}
+    }
+    .card{
+      background: rgba(2,6,23,.86);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      padding:14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+    .card h2{
+      margin:0 0 10px 0;
+      font-size:16px;
+      letter-spacing:.2px;
+    }
+    .muted{color:var(--muted)}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(11,18,32,.7);
+      color: var(--muted);
+      font-size:12px;
+    }
+    .list{margin-top:10px; display:flex; flex-direction:column; gap:10px}
+    .item{
+      border:1px solid var(--border);
+      background: rgba(11,18,32,.65);
+      border-radius:14px;
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .item .left{display:flex; flex-direction:column; gap:4px}
+    .item .title{font-weight:700}
+    .item .meta{font-size:12px; color: var(--muted)}
+    .badge{
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      border:1px solid var(--border);
+      background: rgba(2,6,23,.55);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .badge.ok{border-color: rgba(22,163,74,.35); color: rgba(167,243,208,.95)}
+    .badge.warn{border-color: rgba(245,158,11,.35); color: rgba(253,230,138,.95)}
+    .badge.err{border-color: rgba(239,68,68,.35); color: rgba(254,202,202,.95)}
+    .empty{
+      padding:14px;
+      border-radius:14px;
+      border:1px dashed rgba(255,255,255,.18);
+      background: rgba(11,18,32,.35);
+      color: var(--muted);
+      margin-top:10px;
+    }
+    .split{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .split{grid-template-columns:1fr}
+    }
+    input, select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(11,18,32,.85);
+      color:#fff;
+      outline:none;
+    }
+    .hint{font-size:12px; color: var(--muted); margin-top:8px}
+    .toast{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(2,6,23,.55);
+      color: var(--muted);
+      display:none;
+    }
+    .toast.show{display:block}
   </style>
 </head>
 <body>
-  <header>
-    <h2>User Dashboard</h2>
-    <button id="logoutBtn">Logout</button>
-  </header>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo">CMP</div>
+        <div>
+          <h1>User Dashboard</h1>
+          <div class="sub">Cyprus Match Predict • Προβλέψεις • Πόντοι • Διαγωνισμοί</div>
+        </div>
+      </div>
+      <div class="actions">
+        <span class="pill" id="userPill">Φόρτωση χρήστη…</span>
+        <button class="btn-secondary" id="refreshBtn">Ανανέωση</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </header>
 
-  <div class="card">
-    <div id="hello" class="muted">Φόρτωση…</div>
+    <div class="grid">
+      <!-- LEFT -->
+      <section class="card">
+        <h2>🏟️ Επόμενοι Αγώνες</h2>
+        <div class="muted">Λίστα από τον πίνακα <b>matches</b> (upcoming).</div>
+        <div id="matchesList" class="list"></div>
+        <div id="matchesEmpty" class="empty" style="display:none;">
+          Δεν βρέθηκαν αγώνες ακόμα. (Ο admin μπορεί να προσθέσει από το Admin Panel.)
+        </div>
+        <div class="toast" id="matchesToast"></div>
+      </section>
+
+      <!-- RIGHT -->
+      <aside class="card">
+        <h2>👤 Ο λογαριασμός σου</h2>
+        <div class="row" style="margin-top:6px;">
+          <span class="badge ok" id="roleBadge">User</span>
+          <span class="badge" id="emailBadge">—</span>
+        </div>
+        <div class="hint" id="profileHint">Φόρτωση προφίλ…</div>
+
+        <div style="height:10px"></div>
+
+        <h2>🏆 Διαγωνισμοί</h2>
+        <div class="muted">Αυτή η ενότητα είναι έτοιμη για σύνδεση με πίνακα <b>contests</b>.</div>
+        <div id="contestsBox" class="empty">
+          Προς το παρόν: coming soon ✅
+        </div>
+
+        <div style="height:10px"></div>
+
+        <h2>🎯 Γρήγορη Πρόβλεψη (demo)</h2>
+        <div class="muted">Μικρό UI demo — όταν φτιάξουμε πίνακα predictions, θα το συνδέσουμε.</div>
+        <div style="height:10px"></div>
+        <div class="split">
+          <div>
+            <label class="hint">Home</label>
+            <input id="homeScore" type="number" min="0" placeholder="0"/>
+          </div>
+          <div>
+            <label class="hint">Away</label>
+            <input id="awayScore" type="number" min="0" placeholder="0"/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn-secondary" id="savePredBtn" type="button">Αποθήκευση (demo)</button>
+        </div>
+        <div class="toast" id="predToast"></div>
+      </aside>
+    </div>
   </div>
 
   <script type="module">
+    import { supabase } from "./supabase.js";
     import { requireUser, logout } from "./auth.js";
-    document.getElementById("logoutBtn").onclick = logout;
 
-    const res = await requireUser();
-    if (!res) return;
+    const userPill = document.getElementById("userPill");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
 
-    const { user, profile } = res;
-    document.getElementById("hello").textContent =
-      `👋 Καλωσήρθες, ${profile?.username || user.email}! (is_admin: false)`;
+    const roleBadge = document.getElementById("roleBadge");
+    const emailBadge = document.getElementById("emailBadge");
+    const profileHint = document.getElementById("profileHint");
+
+    const matchesList = document.getElementById("matchesList");
+    const matchesEmpty = document.getElementById("matchesEmpty");
+    const matchesToast = document.getElementById("matchesToast");
+
+    const predToast = document.getElementById("predToast");
+    const savePredBtn = document.getElementById("savePredBtn");
+
+    logoutBtn.onclick = logout;
+
+    function toast(el, text){
+      el.textContent = text;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2600);
+    }
+
+    function fmtDate(iso){
+      try{
+        const d = new Date(iso);
+        return d.toLocaleString("el-GR", { dateStyle:"medium", timeStyle:"short" });
+      }catch(e){
+        return iso;
+      }
+    }
+
+    function statusFromRow(row){
+      const s = String(row?.status || "upcoming").toLowerCase();
+      if (s.includes("live")) return { label:"LIVE", cls:"warn" };
+      if (s.includes("finished") || s.includes("ended")) return { label:"Τελικό", cls:"ok" };
+      return { label:"Upcoming", cls:"" };
+    }
+
+    async function loadMatches(){
+      matchesList.innerHTML = "";
+      matchesEmpty.style.display = "none";
+
+      const { data, error } = await supabase
+        .from("matches")
+        .select("id, home_team, away_team, match_date, status")
+        .order("match_date", { ascending: true })
+        .limit(25);
+
+      if (error){
+        matchesEmpty.style.display = "block";
+        toast(matchesToast, "❌ " + error.message);
+        return;
+      }
+
+      const rows = (data || []).filter(r => String(r.status || "upcoming").toLowerCase() !== "deleted");
+
+      if (!rows.length){
+        matchesEmpty.style.display = "block";
+        return;
+      }
+
+      for (const row of rows){
+        const st = statusFromRow(row);
+        const item = document.createElement("div");
+        item.className = "item";
+        item.innerHTML = \`
+          <div class="left">
+            <div class="title">\${row.home_team} <span class="muted">vs</span> \${row.away_team}</div>
+            <div class="meta">🕒 \${fmtDate(row.match_date)}</div>
+          </div>
+          <span class="badge \${st.cls}">\${st.label}</span>
+        \`;
+        matchesList.appendChild(item);
+      }
+    }
+
+    async function boot(){
+      const res = await requireUser();
+      if (!res) return;
+
+      const { user, profile } = res;
+
+      userPill.textContent = "✅ Συνδεδεμένος";
+      emailBadge.textContent = user.email || "—";
+      roleBadge.textContent = profile?.is_admin ? "Admin" : "User";
+      roleBadge.className = profile?.is_admin ? "badge warn" : "badge ok";
+
+      profileHint.textContent = \`Username: \${profile?.username || (user.email?.split("@")[0] || "user")}\`;
+
+      await loadMatches();
+    }
+
+    refreshBtn.onclick = async () => {
+      toast(matchesToast, "🔄 Ανανέωση…");
+      await loadMatches();
+    };
+
+    savePredBtn.onclick = () => {
+      const h = document.getElementById("homeScore").value;
+      const a = document.getElementById("awayScore").value;
+      toast(predToast, \`✅ (demo) Έβαλες πρόβλεψη: \${h || 0}-\${a || 0}\`);
+    };
+
+    boot();
   </script>
 </body>
 </html>
