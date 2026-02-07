@@ -160,8 +160,6 @@ const loginBox = $("loginBox");
 const registerBox = $("registerBox");
 
 const alreadyBox = $("alreadyLoggedInBox");
-
-const alreadyMsg = $("alreadyLoggedInMsg");
 const doLogoutBtn = $("doLogoutBtn");
 const goAdminBtn = $("goAdminBtn");
 const goClientBtn = $("goClientBtn");
@@ -231,10 +229,24 @@ async function redirectByRole(user){
   location.replace(isAdmin ? "admin.html" : "dashboard.html");
 }
 
-// ---------- Auto session ----------
+
+function showAlready(user){
+  const alreadyBox = document.getElementById('alreadyLoggedInBox');
+  const alreadyMsgEl = document.getElementById('alreadyLoggedInMsg');
+  const loginBox = document.getElementById('loginBox');
+  const registerBox = document.getElementById('registerBox');
+
+  const email = String(user?.email || '');
+  if (alreadyMsgEl) alreadyMsgEl.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
+  if (alreadyBox) alreadyBox.classList.remove('hide');
+  if (loginBox) loginBox.classList.add('hide');
+  if (registerBox) registerBox.classList.add('hide');
+}
+
+// ---------- Auto session (NO auto-redirect) ----------
 (async () => {
   const { data, error } = await supabase.auth.getSession();
-  if (error) console.warn("getSession error", error);
+  if (error) console.warn('getSession error:', error);
   const session = data?.session;
 
   if (!session?.user) {
@@ -242,8 +254,9 @@ async function redirectByRole(user){
     return;
   }
 
-  // Αν είσαι ήδη συνδεδεμένος, πάμε κατευθείαν εκεί που πρέπει (χωρίς να δείχνει "είσαι ήδη συνδεδεμένος")
-  await redirectByRole(session.user);
+  // ✅ Μην κάνεις αυτόματο redirect (κόβει το loop).
+  // Άφησε τον χρήστη να πατήσει Admin ή Πελάτης.
+  showAlready(session.user);
 })();
 
 // ---------- Login ----------
