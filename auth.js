@@ -31,18 +31,20 @@ export async function routeByRole(){
   if (!user) { location.replace("login.html"); return; }
 
   const { profile, error } = await getProfile(user.id);
+
   if (error && (error.status === 401 || error.status === 403)) {
     console.warn("profiles permission error:", error);
     await supabase.auth.signOut();
     localStorage.removeItem("session");
-    location.replace("login.html");
+    location.replace("login.html?logged_out=1");
     return;
   }
+
   if (!profile){
     // profile missing -> sign out to avoid loops (trigger/backfill should fix it)
     await supabase.auth.signOut();
     localStorage.removeItem("session");
-    location.replace("login.html");
+    location.replace("login.html?logged_out=1");
     return;
   }
 
@@ -55,18 +57,21 @@ export async function requireUser(){
   if (!user) { location.replace("login.html"); return null; }
 
   const { profile, error } = await getProfile(user.id);
+
   if (error && (error.status === 401 || error.status === 403)) {
     await supabase.auth.signOut();
     localStorage.removeItem("session");
-    location.replace("login.html");
+    location.replace("login.html?logged_out=1");
     return null;
   }
+
   if (!profile){
     await supabase.auth.signOut();
     localStorage.removeItem("session");
-    location.replace("login.html");
+    location.replace("login.html?logged_out=1");
     return null;
   }
+
   if (profile.is_admin){
     location.replace("admin.html");
     return null;
@@ -91,7 +96,11 @@ export async function requireAdmin(){
 }
 
 export async function logout(){
-  await supabase.auth.signOut();
-  localStorage.removeItem("session");
-  location.replace("login.html");
+  try{
+    await supabase.auth.signOut();
+  }finally{
+    localStorage.clear();
+    sessionStorage.clear();
+    location.replace("login.html?logged_out=1");
+  }
 }
