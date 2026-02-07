@@ -135,6 +135,8 @@ import { supabase } from "./supabase.js";
 
 const $ = (id) => document.getElementById(id);
 
+
+let currentUser = null;
 const loginErr = $("loginErr");
 const regErr = $("regErr");
 const regOk = $("regOk");
@@ -189,38 +191,41 @@ tabLogin?.addEventListener("click", showLogin);
 tabRegister?.addEventListener("click", showRegister);
 
 // ---------- Profile helpers ----------
-async function getOrCreateProfile(user, preferredUsername){
-  const { data: prof, error: e1 } = await supabase
-    .from("profiles")
-    .select("id, email, username, is_admin")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (prof) return prof;
-
-  // fallback by email (for old rows)
-  const { data: byEmail } = await supabase
-    .from("profiles")
-    .select("id, email, username, is_admin")
-    .eq("email", user.email)
-    .maybeSingle();
-  if (byEmail) return byEmail;
-
-  const username =
-    (preferredUsername || user.user_metadata?.username || "").trim() ||
-    (user.email ? user.email.split("@")[0] : "user");
-
-  const { data: created, error: e3 } = await supabase
-    .from("profiles")
-    .insert([{ id: user.id, email: user.email, username }])
-    .select("id, email, username, is_admin")
-    .maybeSingle();
-
-  if (e3) {
-    console.warn("profile create error", e3);
-    return { id: user.id, email: user.email, username, is_admin: false };
+async function getOrCreateProfile(user){
+  // user μπορεί να είναι null αν το signIn response δεν έχει user άμεσα.
+  // Σε αυτή την περίπτωση, παίρνουμε τον χρήστη από το session.
+  let u = user;
+  if (!u?.id) {
+    const { data } = await supabase.auth.getSession();
+    u = data?.session?.user || null;
   }
-  return created || { id: user.id, email: user.email, username, is_admin: false };
+  if (!u?.id) {
+    throw new Error("Δεν βρέθηκε user session (user είναι null). Κάνε refresh και ξαναδοκίμασε login.");
+  }
+
+  const userId = u.id;
+  const email = String(u.email || "").toLowerCase();
+
+  // 1) δοκίμασε να φέρεις profile
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, username, email, is_admin")
+    .eq("id", userId)
+    .single();
+
+  if (!error && profile) return profile;
+
+  // 2) αν δεν υπάρχει, δημιούργησε το (backup)
+  const username = (email.split("@")[0] || "user").slice(0, 20);
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("profiles")
+    .insert([{ id: userId, email, username, is_admin: false }])
+    .select("id, username, email, is_admin")
+    .single();
+
+  if (insErr) throw insErr;
+  return inserted;
 }
 
 async function redirectByRole(user){
@@ -229,25 +234,10 @@ async function redirectByRole(user){
   location.replace(isAdmin ? "admin.html" : "dashboard.html");
 }
 
-
-
-
-function showAlready(user){
-  const email = String(user?.email || "");
-  const alreadyBox = document.getElementById("alreadyLoggedInBox");
-  const alreadyMsg = document.getElementById("alreadyLoggedInMsg");
-  const loginBox = document.getElementById("loginBox");
-  const registerBox = document.getElementById("registerBox");
-  if (alreadyMsg) alreadyMsg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
-  if (alreadyBox) alreadyBox.classList.remove("hide");
-  if (loginBox) loginBox.classList.add("hide");
-  if (registerBox) registerBox.classList.add("hide");
-}
-
 // ---------- Auto session (NO auto-redirect) ----------
 (async () => {
   const { data, error } = await supabase.auth.getSession();
-  if (error) console.warn("getSession error", error);
+  if (error) console.warn("getSession error:", error);
   const session = data?.session;
 
   if (!session?.user) {
@@ -255,10 +245,8 @@ function showAlready(user){
     return;
   }
 
-  // ✅ Μην κάνεις auto redirect (για να μη μπερδεύει όταν αλλάζεις χρήστες)
   showAlready(session.user);
 })();
-
 
 // ---------- Login ----------
 $("loginBtn")?.addEventListener("click", async () => {
@@ -268,12 +256,12 @@ $("loginBtn")?.addEventListener("click", async () => {
   if (!email || !password) { setBox(loginErr, "Βάλε Email και Password."); return; }
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) { setBox(loginErr, error.message); return; }
+      if (error) { setBox(loginErr, error.message); return; }
   const user = data?.user;
   if (!user) { setBox(loginErr, "Κάτι πήγε λάθος. Δοκίμασε ξανά."); return; }
 
   setBox(loginErr, "Σύνδεση OK ✅", true);
-  await redirectByRole(user);
+  redirectByRole(currentUser);
 });
 
 passInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("loginBtn")?.click(); });
@@ -339,8 +327,34 @@ doLogoutBtn?.addEventListener("click", async () => {
   await supabase.auth.signOut();
   location.reload();
 });
-goAdminBtn?.addEventListener("click", () => await redirectByRole(user));
+goAdminBtn?.addEventListener("click", () => location.replace("admin.html"));
 goClientBtn?.addEventListener("click", () => location.replace("dashboard.html"));
+
+/* ----- Already connected buttons (no await in top-level) ----- */
+try {
+  const adminBtn = document.getElementById("alreadyAdminBtn");
+  const userBtn = document.getElementById("alreadyCustomerBtn");
+  const logoutBtn = document.getElementById("alreadyLogoutBtn");
+
+  if (adminBtn) adminBtn.addEventListener("click", () => {
+    if (!currentUser) return;
+    // redirectByRole will send admin to admin and user to dashboard
+    redirectByRole(currentUser);
+  });
+
+  if (userBtn) userBtn.addEventListener("click", () => {
+    location.replace("dashboard.html");
+  });
+
+  if (logoutBtn) logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("session");
+    location.replace("login.html");
+  });
+} catch(e) {
+  console.warn("already buttons bind failed", e);
+}
+
 </script>
 </body>
 </html>
