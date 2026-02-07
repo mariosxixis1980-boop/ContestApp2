@@ -133,6 +133,19 @@
 <script type="module">
 import { supabase } from "./supabase.js";
 
+
+function showAlready(email){
+  const box = document.getElementById("alreadyLoggedInBox");
+  const msg = document.getElementById("alreadyLoggedInMsg");
+  const loginBox = document.getElementById("loginBox");
+  const registerBox = document.getElementById("registerBox");
+  if (msg) msg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
+  if (box) box.classList.remove("hide");
+  if (loginBox) loginBox.classList.add("hide");
+  if (registerBox) registerBox.classList.add("hide");
+}
+
+
 const $ = (id) => document.getElementById(id);
 
 const loginErr = $("loginErr");
