@@ -132,19 +132,7 @@
 </div>
 <script type="module">
 import { supabase } from "./supabase.js";
-import { routeByRole, logout } from "./auth.js";
 
-
-function showAlready(email){
-  const box = document.getElementById("alreadyLoggedInBox");
-  const msg = document.getElementById("alreadyLoggedInMsg");
-  const loginBox = document.getElementById("loginBox");
-  const regBox = document.getElementById("registerBox");
-  if (msg) msg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
-  if (box) box.classList.remove("hide");
-  if (loginBox) loginBox.classList.add("hide");
-  if (regBox) regBox.classList.add("hide");
-}
 const $ = (id) => document.getElementById(id);
 
 const loginErr = $("loginErr");
@@ -243,6 +231,8 @@ async function redirectByRole(user){
 
 // ---------- Auto session ----------
 (async () => {
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('logged_out') === '1') { showLogin(); return; }
   const { data, error } = await supabase.auth.getSession();
   if (error) console.warn("getSession error", error);
   const session = data?.session;
@@ -253,10 +243,8 @@ async function redirectByRole(user){
   }
 
   // Αν είσαι ήδη συνδεδεμένος, πάμε κατευθείαν εκεί που πρέπει (χωρίς να δείχνει "είσαι ήδη συνδεδεμένος")
-  await routeByRole(session.user);
-})();
-
-// ---------- Login ----------
+  showAlready?.(session.user);
+})();// ---------- Login ----------
 $("loginBtn")?.addEventListener("click", async () => {
   setBox(loginErr, "Γίνεται σύνδεση...");
   const email = (emailInput?.value || "").trim();
@@ -269,7 +257,7 @@ $("loginBtn")?.addEventListener("click", async () => {
   if (!user) { setBox(loginErr, "Κάτι πήγε λάθος. Δοκίμασε ξανά."); return; }
 
   setBox(loginErr, "Σύνδεση OK ✅", true);
-  await routeByRole(user);
+  await redirectByRole(user);
 });
 
 passInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("loginBtn")?.click(); });
