@@ -624,9 +624,6 @@ import { supabase } from "./supabase.js";
 
    Αν δεν υπάρχουν meta/matches, η σελίδα θα πέσει σε fallback (localStorage).
 ===================================================== */
-
-const ADMIN_EMAIL = "mariosxixis1980@gmail.com";
-
 const K = {
   S:'session',A:'activeContest',M:'contestMatches',META:'contestMeta'
 };
@@ -675,35 +672,54 @@ async function boot(){
     return;
   }
 
-  // 2) local session για το UI
+  // 2) role από profiles (ΟΧΙ admin email hacks)
   const email = String(session.user.email || '').toLowerCase();
-  const username = (email.split('@')[0] || 'user').trim();
-  const isAdmin = email === String(ADMIN_EMAIL).toLowerCase();
-  localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
+  const fallbackUsername = (email.split('@')[0] || 'user').trim();
 
-  // 3) users list (για τον admin πίνακα)
+  let profile = null;
   try{
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const arr = Array.isArray(users) ? users : [];
-    const exists = arr.some(u => String(u?.username||'').toLowerCase() === username.toLowerCase());
-    if(!exists){
-      arr.push({ username, email, isAdmin });
-      localStorage.setItem('users', JSON.stringify(arr));
-    }
-  }catch(e){}
+    const { data: p, error: pErr } = await supabase
+      .from('profiles')
+      .select('username, is_admin')
+      .eq('id', session.user.id)
+      .single();
 
-  // 4) logout
+    if (pErr) throw pErr;
+    profile = p;
+  }catch(e){
+    console.warn('profiles read failed:', e);
+    // Αν δεν μπορούμε να διαβάσουμε profile, κάνουμε sign out για να μην κάνει loop
+    try{ await supabase.auth.signOut(); }catch(_){}
+    localStorage.removeItem('session');
+    location.replace('login.html?logged_out=1');
+    return;
+  }
+
+  const username = String(profile?.username || fallbackUsername).trim();
+  const isAdmin = !!profile?.is_admin;
+
+  // Αν είναι admin, δεν πρέπει να βλέπει customer dashboard
+  if (isAdmin){
+    localStorage.setItem('session', JSON.stringify({ username, email, isAdmin }));
+    location.replace('admin.html');
+    return;
+  }
+
+  // 3) local session για το UI
+  localStorage.setItem('session', JSON.stringify({ username, email, isAdmin:false }));
+
+  // 4) logout (με logged_out flag)
   const lo = document.getElementById('lo');
   if(lo){
     lo.addEventListener('click', async () => {
       try { await supabase.auth.signOut(); } catch(e) {}
-      localStorage.clear();
+      localStorage.removeItem('session');
       sessionStorage.clear();
       location.replace('login.html?logged_out=1');
     });
   }
 
-  // 5) LOAD PUBLISHED+ACTIVE contest από Supabase
+  // 5) LOAD PUBLISHED+ACTIVE contest από Supabase    
   //    (αν αποτύχει, κρατάμε fallback localStorage)
   try{
     const { data: contests, error: cErr } = await supabase
