@@ -229,9 +229,39 @@ async function getOrCreateProfile(user){
 }
 
 async function redirectByRole(user){
-  const profile = await getOrCreateProfile(user);
-  const isAdmin = !!profile?.is_admin;
-  location.replace(isAdmin ? "admin.html" : "dashboard.html");
+  // fallback to session if user missing
+  let u = user;
+  if (!u?.id) {
+    const { data } = await supabase.auth.getSession();
+    u = data?.session?.user || null;
+  }
+  if (!u?.id) {
+    throw new Error("Δεν βρέθηκε user session για redirect.");
+  }
+
+  const profile = await getOrCreateProfile(u);
+
+  if (profile?.is_admin) {
+    location.replace("admin.html");
+  } else {
+    location.replace("dashboard.html");
+  }
+}
+
+
+
+function showAlready(user){
+  currentUser = user;
+  const email = String(user?.email || "");
+  const alreadyBox = document.getElementById("alreadyLoggedInBox");
+  const alreadyMsg = document.getElementById("alreadyLoggedInMsg");
+  const loginBox = document.getElementById("loginBox");
+  const registerBox = document.getElementById("registerBox");
+
+  if (alreadyMsg) alreadyMsg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
+  if (alreadyBox) alreadyBox.classList.remove("hide");
+  if (loginBox) loginBox.classList.add("hide");
+  if (registerBox) registerBox.classList.add("hide");
 }
 
 // ---------- Auto session (NO auto-redirect) ----------
@@ -354,6 +384,30 @@ try {
 } catch(e) {
   console.warn("already buttons bind failed", e);
 }
+
+
+
+/* ----- Already connected buttons ----- */
+(function bindAlreadyButtons(){
+  const adminBtn = document.getElementById("alreadyAdminBtn");
+  const userBtn = document.getElementById("alreadyCustomerBtn");
+  const logoutBtn = document.getElementById("alreadyLogoutBtn");
+
+  if (adminBtn) adminBtn.addEventListener("click", async () => {
+    try { await redirectByRole(currentUser); } catch(e){ console.warn(e); }
+  });
+
+  // "Πελάτης" -> πάντα dashboard
+  if (userBtn) userBtn.addEventListener("click", () => {
+    location.replace("dashboard.html");
+  });
+
+  if (logoutBtn) logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("session");
+    location.replace("login.html");
+  });
+})();
 
 </script>
 </body>
