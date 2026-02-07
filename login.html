@@ -1,414 +1,87 @@
 <!DOCTYPE html>
-
 <html lang="el">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Cyprus Match Predict</title>
-<link href="icon-192.png" rel="icon"/>
-<style>
-    :root{
-      --bg:#070b13;--b:rgba(255,255,255,.12);
-      --t:#eaf1ff;--m:rgba(255,255,255,.65);
-      --g:rgba(46,204,113,.20);--gb:rgba(46,204,113,.45);
-      --a:rgba(241,196,15,.16);--ab:rgba(241,196,15,.45);
-      --r:rgba(231,76,60,.14);--rb:rgba(231,76,60,.45);
-    }
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    body{
-      margin:0;min-height:100vh;padding:18px;color:var(--t);
-      background:
-        radial-gradient(900px 700px at 20% 0%, rgba(40,110,255,.25), transparent 55%),
-        radial-gradient(900px 700px at 80% 10%, rgba(0,255,170,.18), transparent 55%),
-        var(--bg);
-      display:flex;align-items:center;justify-content:center;
-    }
-    .card{
-      width:min(520px, 100%);
-      border:1px solid var(--b);
-      border-radius:22px;
-      padding:16px;
-      background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
-      box-shadow:0 18px 60px rgba(0,0,0,.55);
-    }
-    h1{margin:0;font-size:36px}
-    .sub{margin-top:6px;color:var(--m);font-weight:700}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-    .btn{
-      border:1px solid var(--b);background:rgba(255,255,255,.06);color:var(--t);
-      padding:10px 12px;border-radius:14px;font-weight:900;cursor:pointer;
-      text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;
-      user-select:none;
-    }
-    .g{background:var(--g);border-color:var(--gb)}
-    .a{background:var(--a);border-color:var(--ab)}
-    .box{
-      border:1px solid var(--b);border-radius:18px;background:rgba(0,0,0,.18);
-      padding:12px;margin-top:12px;
-    }
-    label{display:block;margin-top:10px;color:var(--m);font-weight:800}
-    input{
-      width:100%;
-      padding:12px;
-      border-radius:14px;
-      border:1px solid var(--b);
-      background:rgba(0,0,0,.25);
-      color:var(--t);
-      outline:none;
-      font-weight:800;
-    }
-    .mini{color:var(--m);font-weight:750;margin-top:8px}
-    .tabs{display:flex;gap:10px;margin-top:12px}
-    .tab{flex:1}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CMP Login</title>
+  <style>
+    body{font-family:Arial,system-ui;background:#0f172a;color:#fff;margin:0;padding:24px}
+    .box{max-width:520px;margin:0 auto;background:#020617;padding:18px;border-radius:14px}
+    input{width:100%;padding:12px;border-radius:10px;border:1px solid #1f2937;background:#0b1220;color:#fff;margin:8px 0}
+    button{padding:10px 14px;border-radius:10px;border:0;background:#2563eb;color:#fff;cursor:pointer}
+    button:hover{background:#1d4ed8}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .msg{margin-top:10px;opacity:.95}
     .hide{display:none}
+    .choice{background:#111827;border:1px solid #1f2937;padding:12px;border-radius:12px;margin-top:14px}
   </style>
 </head>
 <body>
-<div class="card">
-<div style="text-align:center;margin-bottom:12px;">
-<div style="font-size:18px;font-weight:700;">Cyprus Match Predict</div>
-<div style="font-size:13px;color:#C9A24D;letter-spacing:2px;margin-top:4px;">🇨🇾  C.M.P 🇨🇾</div>
-</div>
-<h1>🔐 Login</h1>
-<div class="sub">Σύνδεση με Email &amp; Password (Supabase).</div>
-<div class="box" id="nextBox">
-<div class="mini" style="font-size:16px;font-weight:900">
-        📅 <span id="nextText">Επόμενος διαγωνισμός: -</span>
-</div>
-<div class="mini" id="nextSub" style="margin-top:6px;opacity:.95">-</div>
-</div>
-<div class="tabs">
-<button class="btn a tab" id="tabLogin" type="button">Είσοδος</button>
-<button class="btn tab" id="tabRegister" type="button">Εγγραφή</button>
-</div>
-<!-- Αν υπάρχει ήδη ενεργό Supabase session, δείχνουμε επιλογές (δεν σε πετάμε αυτόματα στο admin) -->
-<div class="box hide" id="alreadyLoggedInBox">
-<div class="mini" id="alreadyLoggedInMsg"></div>
-<div class="row" style="margin-top:10px">
-<button class="btn a" id="goAdminBtn" type="button">➡️ Admin</button>
-<button class="btn a" id="goClientBtn" type="button">➡️ Πελάτης</button>
-<button class="btn" id="doLogoutBtn" type="button">🚪 Logout</button>
-</div>
-</div>
-<!-- LOGIN -->
-<div class="box" id="loginBox">
-<label>Email</label>
-<input autocomplete="email" id="loginEmail" placeholder="email@example.com" type="email"/>
-<label>Password</label>
-<input autocomplete="current-password" id="loginPass" placeholder="••••••••" type="password"/>
-<div class="row">
-<button class="btn g" id="loginBtn" type="button">✅ Login</button>
-<button class="btn" id="clearBtn" type="button">🧽 Clear</button>
-<button class="btn" id="resetBtn" type="button">🔁 Reset Password</button>
-</div>
-<div class="mini" id="loginErr" style="color:#ffb3b3;display:none"></div>
-<div class="mini">Tip: Αν βλέπεις “κωδικό μόνος του”, είναι autofill του Chrome.</div>
-</div>
-<!-- REGISTER -->
-<div class="box hide" id="registerBox">
-<label>Username (ΥΠΟΧΡΕΩΤΙΚΟ)</label>
-<input autocomplete="username" id="regUser" placeholder="π.χ marios10"/>
-<label>Email</label>
-<input autocomplete="email" id="regEmail" placeholder="π.χ name@gmail.com" type="email"/>
-<label>Password</label>
-<input autocomplete="new-password" id="regPass" placeholder="διάλεξε password" type="password"/>
-<div class="row">
-<button class="btn g" id="regBtn" type="button">🆕 Δημιουργία</button>
-<button class="btn" id="regClearBtn" type="button">🧽 Clear</button>
-</div>
-<div class="mini" id="regErr" style="color:#ffb3b3;display:none"></div>
-<div class="mini" id="regOk" style="color:#b7ffcf;display:none"></div>
-<div class="mini">Θα σου έρθει email επιβεβαίωσης αν είναι ανοικτό στο Supabase Auth settings.</div>
-</div>
-<p style="font-size:11px;text-align:center;color:rgba(255,255,255,.55);margin-top:12px;">
-      Η εφαρμογή δεν αποτελεί παιχνίδι στοιχήματος.
-    </p>
-<p style="font-size:12px;text-align:center;margin-top:6px;color:rgba(255,255,255,.75);font-weight:700;">
-      Με τη σύνδεση αποδέχεστε τους
-      <a href="terms.html" style="color:#eaf1ff;text-decoration:underline;" target="_blank">Όρους &amp; Προϋποθέσεις</a>
-      και τους
-      <a href="rules.html" style="color:#eaf1ff;text-decoration:underline;" target="_blank">Κανόνες Παιχνιδιού</a>.
-    </p>
-</div>
-<script type="module">
-import { supabase } from "./supabase.js";
+  <div class="box">
+    <h2>Cyprus Match Predict</h2>
 
-const $ = (id) => document.getElementById(id);
+    <div id="loginBox">
+      <input id="email" placeholder="Email" autocomplete="email">
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+      <div class="row">
+        <button id="loginBtn">Login</button>
+        <button id="clearBtn" type="button" style="background:#334155">Clear</button>
+      </div>
+      <div id="msg" class="msg"></div>
+    </div>
 
+    <div id="alreadyLoggedInBox" class="choice hide">
+      <div id="alreadyLoggedInMsg" class="msg"></div>
+      <div class="row">
+        <button id="continueBtn">Συνέχεια</button>
+        <button id="logoutBtn" style="background:#334155">Logout</button>
+      </div>
+    </div>
+  </div>
 
-let currentUser = null;
-const loginErr = $("loginErr");
-const regErr = $("regErr");
-const regOk = $("regOk");
+  <script type="module">
+    import { supabase } from "./supabase.js";
+    import { routeByRole, logout } from "./auth.js";
 
-const setBox = (el, text, ok=false) => {
-  if (!el) return;
-  el.textContent = text || "";
-  el.style.display = text ? "block" : "none";
-  if (el === regOk) return;
-  el.style.color = ok ? "#b8ffcf" : "#ffb8b8";
-};
+    const msg = document.getElementById("msg");
+    const alreadyBox = document.getElementById("alreadyLoggedInBox");
+    const alreadyMsg = document.getElementById("alreadyLoggedInMsg");
 
-const emailInput = $("loginEmail");
-const passInput  = $("loginPass");
+    document.getElementById("clearBtn").onclick = () => {
+      document.getElementById("email").value = "";
+      document.getElementById("password").value = "";
+      msg.textContent = "";
+    };
 
-const regUserInput = $("regUser");
-const regEmailInput = $("regEmail");
-const regPassInput  = $("regPass");
+    document.getElementById("loginBtn").onclick = async () => {
+      msg.textContent = "";
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
 
-const tabLogin = $("tabLogin");
-const tabRegister = $("tabRegister");
-const loginBox = $("loginBox");
-const registerBox = $("registerBox");
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { msg.textContent = "❌ " + error.message; return; }
 
-const alreadyBox = $("alreadyLoggedInBox");
-const doLogoutBtn = $("doLogoutBtn");
-const goAdminBtn = $("goAdminBtn");
-const goClientBtn = $("goClientBtn");
+      // overwrite any old local session immediately (prevents old isAdmin=true sticking)
+      localStorage.removeItem("session");
 
-function showLogin(){
-  loginBox?.classList.remove("hide");
-  registerBox?.classList.add("hide");
-  tabLogin?.classList.add("active");
-  tabRegister?.classList.remove("active");
-  alreadyBox?.classList.add("hide");
-  setBox(loginErr, "");
-  setBox(regErr, "");
-  setBox(regOk, "");
-}
-function showRegister(){
-  registerBox?.classList.remove("hide");
-  loginBox?.classList.add("hide");
-  tabRegister?.classList.add("active");
-  tabLogin?.classList.remove("active");
-  alreadyBox?.classList.add("hide");
-  setBox(loginErr, "");
-  setBox(regErr, "");
-  setBox(regOk, "");
-}
+      // route by profiles.is_admin
+      await routeByRole();
+    };
 
-tabLogin?.addEventListener("click", showLogin);
-tabRegister?.addEventListener("click", showRegister);
+    document.getElementById("continueBtn").onclick = async () => {
+      await routeByRole();
+    };
+    document.getElementById("logoutBtn").onclick = logout;
 
-// ---------- Profile helpers ----------
-async function getOrCreateProfile(user){
-  // user μπορεί να είναι null αν το signIn response δεν έχει user άμεσα.
-  // Σε αυτή την περίπτωση, παίρνουμε τον χρήστη από το session.
-  let u = user;
-  if (!u?.id) {
-    const { data } = await supabase.auth.getSession();
-    u = data?.session?.user || null;
-  }
-  if (!u?.id) {
-    throw new Error("Δεν βρέθηκε user session (user είναι null). Κάνε refresh και ξαναδοκίμασε login.");
-  }
-
-  const userId = u.id;
-  const email = String(u.email || "").toLowerCase();
-
-  // 1) δοκίμασε να φέρεις profile
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id, username, email, is_admin")
-    .eq("id", userId)
-    .single();
-
-  if (!error && profile) return profile;
-
-  // 2) αν δεν υπάρχει, δημιούργησε το (backup)
-  const username = (email.split("@")[0] || "user").slice(0, 20);
-
-  const { data: inserted, error: insErr } = await supabase
-    .from("profiles")
-    .insert([{ id: userId, email, username, is_admin: false }])
-    .select("id, username, email, is_admin")
-    .single();
-
-  if (insErr) throw insErr;
-  return inserted;
-}
-
-async function redirectByRole(user){
-  // fallback to session if user missing
-  let u = user;
-  if (!u?.id) {
-    const { data } = await supabase.auth.getSession();
-    u = data?.session?.user || null;
-  }
-  if (!u?.id) {
-    throw new Error("Δεν βρέθηκε user session για redirect.");
-  }
-
-  const profile = await getOrCreateProfile(u);
-
-  if (profile?.is_admin) {
-    location.replace("admin.html");
-  } else {
-    location.replace("dashboard.html");
-  }
-}
-
-
-
-function showAlready(user){
-  currentUser = user;
-  const email = String(user?.email || "");
-  const alreadyBox = document.getElementById("alreadyLoggedInBox");
-  const alreadyMsg = document.getElementById("alreadyLoggedInMsg");
-  const loginBox = document.getElementById("loginBox");
-  const registerBox = document.getElementById("registerBox");
-
-  if (alreadyMsg) alreadyMsg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${email}. Διάλεξε που θες να μπεις:`;
-  if (alreadyBox) alreadyBox.classList.remove("hide");
-  if (loginBox) loginBox.classList.add("hide");
-  if (registerBox) registerBox.classList.add("hide");
-}
-
-// ---------- Auto session (NO auto-redirect) ----------
-(async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) console.warn("getSession error:", error);
-  const session = data?.session;
-
-  if (!session?.user) {
-    showLogin();
-    return;
-  }
-
-  showAlready(session.user);
-})();
-
-// ---------- Login ----------
-$("loginBtn")?.addEventListener("click", async () => {
-  setBox(loginErr, "Γίνεται σύνδεση...");
-  const email = (emailInput?.value || "").trim();
-  const password = passInput?.value || "";
-  if (!email || !password) { setBox(loginErr, "Βάλε Email και Password."); return; }
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { setBox(loginErr, error.message); return; }
-  const user = data?.user;
-  if (!user) { setBox(loginErr, "Κάτι πήγε λάθος. Δοκίμασε ξανά."); return; }
-
-  setBox(loginErr, "Σύνδεση OK ✅", true);
-  redirectByRole(currentUser);
-});
-
-passInput?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("loginBtn")?.click(); });
-
-// ---------- Reset password ----------
-$("resetBtn")?.addEventListener("click", async () => {
-  setBox(loginErr, "Στέλνω email επαναφοράς...");
-  const email = (emailInput?.value || "").trim();
-  if (!email) { setBox(loginErr, "Γράψε πρώτα το email."); return; }
-
-  const redirectTo = location.origin + location.pathname.replace("login.html", "update-password.html");
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-
-  if (error) { setBox(loginErr, error.message); return; }
-  setBox(loginErr, "Έφυγε email επαναφοράς ✅ (δες Inbox/Spam).", true);
-});
-
-// ---------- Clear login ----------
-$("clearBtn")?.addEventListener("click", () => {
-  if (emailInput) emailInput.value = "";
-  if (passInput) passInput.value = "";
-  setBox(loginErr, "");
-});
-
-// ---------- Register ----------
-$("regBtn")?.addEventListener("click", async () => {
-  setBox(regErr, "");
-  setBox(regOk, "");
-  setBox(regErr, "Δημιουργώ λογαριασμό...");
-
-  const username = (regUserInput?.value || "").trim();
-  const email = (regEmailInput?.value || "").trim();
-  const password = regPassInput?.value || "";
-
-  if (!email || !password) { setBox(regErr, "Βάλε Email και Password."); return; }
-  if (password.length < 6) { setBox(regErr, "Το password πρέπει να είναι τουλάχιστον 6 χαρακτήρες."); return; }
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { username } }
-  });
-  if (error) { setBox(regErr, error.message); return; }
-
-  if (data?.user) await getOrCreateProfile(data.user, username);
-
-  // success message in regOk box (green)
-  regErr.style.display = "none";
-  setBox(regOk, "Έγινε ✅ Αν έχει email confirmation, έλεγξε Inbox/Spam και κάνε confirm.");
-});
-
-// ---------- Clear register ----------
-$("regClearBtn")?.addEventListener("click", () => {
-  if (regUserInput) regUserInput.value = "";
-  if (regEmailInput) regEmailInput.value = "";
-  if (regPassInput) regPassInput.value = "";
-  setBox(regErr, "");
-  setBox(regOk, "");
-});
-
-// ---------- Existing buttons (if present) ----------
-doLogoutBtn?.addEventListener("click", async () => {
-  await supabase.auth.signOut();
-  location.reload();
-});
-goAdminBtn?.addEventListener("click", () => location.replace("admin.html"));
-goClientBtn?.addEventListener("click", () => location.replace("dashboard.html"));
-
-/* ----- Already connected buttons (no await in top-level) ----- */
-try {
-  const adminBtn = document.getElementById("alreadyAdminBtn");
-  const userBtn = document.getElementById("alreadyCustomerBtn");
-  const logoutBtn = document.getElementById("alreadyLogoutBtn");
-
-  if (adminBtn) adminBtn.addEventListener("click", () => {
-    if (!currentUser) return;
-    // redirectByRole will send admin to admin and user to dashboard
-    redirectByRole(currentUser);
-  });
-
-  if (userBtn) userBtn.addEventListener("click", () => {
-    location.replace("dashboard.html");
-  });
-
-  if (logoutBtn) logoutBtn.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("session");
-    location.replace("login.html");
-  });
-} catch(e) {
-  console.warn("already buttons bind failed", e);
-}
-
-
-
-/* ----- Already connected buttons ----- */
-(function bindAlreadyButtons(){
-  const adminBtn = document.getElementById("alreadyAdminBtn");
-  const userBtn = document.getElementById("alreadyCustomerBtn");
-  const logoutBtn = document.getElementById("alreadyLogoutBtn");
-
-  if (adminBtn) adminBtn.addEventListener("click", async () => {
-    try { await redirectByRole(currentUser); } catch(e){ console.warn(e); }
-  });
-
-  // "Πελάτης" -> πάντα dashboard
-  if (userBtn) userBtn.addEventListener("click", () => {
-    location.replace("dashboard.html");
-  });
-
-  if (logoutBtn) logoutBtn.addEventListener("click", async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("session");
-    location.replace("login.html");
-  });
-})();
-
-</script>
+    // Auto session: show choices (no auto-redirect)
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (!user) return;
+      alreadyMsg.textContent = `✅ Είσαι ήδη συνδεδεμένος ως ${user.email}. Πάτα Συνέχεια ή Logout.`;
+      alreadyBox.classList.remove("hide");
+      document.getElementById("loginBox").classList.add("hide");
+    })();
+  </script>
 </body>
 </html>
